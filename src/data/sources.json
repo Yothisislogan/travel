@@ -11,8 +11,16 @@
     ],
     "deepLink": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true",
     "communityTrackers": [
-      { "name": "GoWilder", "url": "https://www.gowilder.net/", "notes": "Hosted GoWild availability search - fastest way to see which flights show GoWild seats" },
-      { "name": "WildFares", "url": "https://www.wildfares.com/", "notes": "GoWild companion with maps, multi-hop routing, real-time availability" }
+      {
+        "name": "GoWilder",
+        "url": "https://www.gowilder.net/",
+        "notes": "Hosted GoWild availability search - fastest way to see which flights show GoWild seats"
+      },
+      {
+        "name": "WildFares",
+        "url": "https://www.wildfares.com/",
+        "notes": "GoWild companion with maps, multi-hop routing, real-time availability"
+      }
     ],
     "officialApi": "developer.flyfrontier.com is NDC for accredited travel-trade partners only - no hobbyist access"
   },
@@ -27,7 +35,8 @@
   "deepLinks": {
     "googleFlights": "https://www.google.com/travel/flights?q=Flights%20from%20{origin}%20to%20{dest}%20on%20{date}%20one%20way",
     "kayak": "https://www.kayak.com/flights/{origin}-{dest}/{date}?sort=bestflight_a",
-    "amtrak": "https://www.amtrak.com/home.html",
-    "greyhound": "https://www.greyhound.com"
+    "amtrak": "https://www.amtrak.com/tickets/departure.html?wdf_origin={origin}&wdf_destination={dest}&departdate={date}",
+    "greyhound": "https://www.greyhound.com",
+    "_amtrakNote": "Historical prefill pattern - Amtrak SPA deep links are not officially documented; if params stop prefilling, the page still opens the booking search."
   }
 }

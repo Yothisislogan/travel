@@ -1,9 +1,19 @@
 // Amtrak provider. Schedules/fares are seed data (Amtrak has no public fare
 // API); live train status comes free from the community Amtraker API.
 import { loadJSON, fetchJSON, readSnapshot, writeSection } from '../util.js';
+import { fill } from './frontier.js';
 
 const ground = loadJSON('src/data/ground.json');
 const sources = loadJSON('src/data/sources.json');
+const airports = loadJSON('src/data/airports.json');
+
+// Prefilled Amtrak booking link when both ends have Amtrak station codes.
+export function amtrakLink(fromPlace, toPlace, date) {
+  const o = airports.places[fromPlace]?.amtrakCode;
+  const d = airports.places[toPlace]?.amtrakCode;
+  if (!o || !d) return 'https://www.amtrak.com/tickets/departure.html';
+  return fill(sources.deepLinks.amtrak, { origin: o, dest: d, date });
+}
 
 // Long-distance trains relevant to a west->east return.
 const RELEVANT = [

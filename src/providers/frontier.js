@@ -148,8 +148,12 @@ export function findGowildPaths(fromList, toList, { maxConnections = 1 } = {}) {
   for (const p of paths) {
     const flying = p.segments.reduce((s, x) => s + (x.hours ?? 0), 0);
     p.totalHours = +(flying + (p.via ? 1.25 : 0)).toFixed(2);
-    const seg = rules.typicalCostPerSegmentUSD;
-    p.estCostUSD = { min: seg.min * p.segments.length, max: seg.max * p.segments.length };
+    const fees = rules.fareFeesUSD;
+    const extra = p.segments.length - 1;
+    p.estCostUSD = {
+      min: fees.nonstop.min + fees.perExtraSegment.min * extra,
+      max: fees.nonstop.max + fees.perExtraSegment.max * extra,
+    };
     // Frequency: a path only works on days every segment operates.
     const freqs = p.segments.map((s) => frequencyOf(s.from, s.to)).filter(Boolean);
     if (freqs.length) {

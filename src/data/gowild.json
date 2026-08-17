@@ -5,10 +5,14 @@
     "domesticOpensDayBefore": true,
     "domesticNote": "Domestic GoWild fares become bookable the day before departure (Eastern time).",
     "internationalDaysBefore": 10,
-    "earlyBookingCharge": "During 2026 promo periods Frontier sells an Early Booking Charge ($29-$89, up to $99 peak) to book beyond the normal 1-day/10-day windows."
+    "earlyBookingCharge": "During 2026 promo periods Frontier sells an Early Booking Charge (from $29, up to ~$99 on peak dates; pin to your pass's published terms) to book beyond the normal 1-day/10-day windows."
   },
-  "typicalCostPerSegmentUSD": { "min": 15, "max": 30, "notes": "Base fare $0.01/segment + government/airport taxes-fees-charges: domestic TFCs start ~$14.90 per person per segment, so a nonstop runs ~$15 and a one-stop ~$20-30. International runs ~$60-110+ per direction." },
-  "peakDayCharge": "2026 change: blackout dates are no longer absolute - a Peak Day Charge ($79-$159) lets you fly on blackout dates.",
+  "fareFeesUSD": {
+    "nonstop": { "min": 15, "max": 25 },
+    "perExtraSegment": { "min": 4, "max": 10 },
+    "notes": "Base fare $0.01/segment + taxes/fees. The TSA September 11 fee ($5.60) applies per one-way trip, NOT per segment; extra segments add airport facility charges (~$4-10 each). So a domestic nonstop runs ~$15 and a one-stop ~$20-30. International runs ~$60-110+ per direction."
+  },
+  "peakDayCharge": "2026 change: blackout dates are no longer absolute - a Peak Day Charge (from $79, up to ~$159; pin to your pass's published terms) lets you fly on blackout dates.",
   "blackoutDates": [
     { "range": "2026-09-03/2026-09-04", "label": "Labor Day period" },
     { "range": "2026-09-07/2026-09-07", "label": "Labor Day" },

@@ -6,6 +6,7 @@ import { loadJSON, readSnapshot, haversineMiles, estimateFlightHours, costMidpoi
 import { routeMap, gowildRules, searchLink, frequencyOf } from './providers/frontier.js';
 import { deepLinks } from './providers/flights.js';
 import { busLink } from './providers/bus.js';
+import { amtrakLink } from './providers/amtrak.js';
 
 const airports = loadJSON('src/data/airports.json');
 const ground = loadJSON('src/data/ground.json');
@@ -44,7 +45,8 @@ export function buildEdges({ date, allowModes }) {
   // GoWild flight edges: every nonstop in the route map, both directions.
   if (allow.has('gowild')) {
     const { routes } = routeMap();
-    const seg = gowildRules().typicalCostPerSegmentUSD;
+    // Each planner gowild edge is its own one-way booking -> nonstop fees.
+    const seg = gowildRules().fareFeesUSD.nonstop;
     const seen = new Set();
     for (const [from, dests] of Object.entries(routes)) {
       for (const to of dests) {
@@ -116,7 +118,7 @@ export function buildEdges({ date, allowModes }) {
   // Trains and buses (directional as encoded - eastbound legs).
   if (allow.has('train')) {
     for (const t of ground.trainLegs) {
-      edges.push({ mode: 'train', from: t.from, to: t.to, operator: t.operator, hours: t.hours, costUSD: t.costUSD, dataStatus: 'estimate', bookLink: t.bookLink, notes: t.notes, daysPerWeek: t.daysPerWeek });
+      edges.push({ mode: 'train', from: t.from, to: t.to, operator: t.operator, hours: t.hours, costUSD: t.costUSD, dataStatus: 'estimate', bookLink: amtrakLink(t.from, t.to, date), notes: t.notes, daysPerWeek: t.daysPerWeek });
     }
   }
   if (allow.has('bus')) {

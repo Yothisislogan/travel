@@ -1,94 +1,651 @@
 {
   "_comment": "Places the planner can route through. type: airport | rail | bus. localLinks are intra-metro transfers (both directions).",
   "places": {
-    "RIC": { "type": "airport", "name": "Richmond International", "city": "Richmond, VA", "lat": 37.505, "lon": -77.32 },
-    "ORF": { "type": "airport", "name": "Norfolk International", "city": "Norfolk, VA", "lat": 36.895, "lon": -76.201 },
-    "PHF": { "type": "airport", "name": "Newport News/Williamsburg", "city": "Newport News, VA", "lat": 37.132, "lon": -76.493 },
-    "LAS": { "type": "airport", "name": "Harry Reid International", "city": "Las Vegas, NV", "lat": 36.086, "lon": -115.154 },
-    "SFO": { "type": "airport", "name": "San Francisco International", "city": "San Francisco, CA", "lat": 37.622, "lon": -122.379 },
-    "OAK": { "type": "airport", "name": "Oakland International", "city": "Oakland, CA", "lat": 37.712, "lon": -122.213 },
-    "SJC": { "type": "airport", "name": "San Jose Mineta International", "city": "San Jose, CA", "lat": 37.363, "lon": -121.929 },
-    "DEN": { "type": "airport", "name": "Denver International", "city": "Denver, CO", "lat": 39.862, "lon": -104.673 },
-    "MCO": { "type": "airport", "name": "Orlando International", "city": "Orlando, FL", "lat": 28.431, "lon": -81.308 },
-    "ATL": { "type": "airport", "name": "Hartsfield-Jackson Atlanta", "city": "Atlanta, GA", "lat": 33.641, "lon": -84.427 },
-    "PHL": { "type": "airport", "name": "Philadelphia International", "city": "Philadelphia, PA", "lat": 39.874, "lon": -75.243 },
-    "CLT": { "type": "airport", "name": "Charlotte Douglas", "city": "Charlotte, NC", "lat": 35.214, "lon": -80.943 },
-    "RDU": { "type": "airport", "name": "Raleigh-Durham", "city": "Raleigh, NC", "lat": 35.878, "lon": -78.788 },
-    "BWI": { "type": "airport", "name": "Baltimore/Washington", "city": "Baltimore, MD", "lat": 39.177, "lon": -76.669 },
-    "DCA": { "type": "airport", "name": "Reagan Washington National", "city": "Washington, DC", "lat": 38.852, "lon": -77.038 },
-    "IAD": { "type": "airport", "name": "Washington Dulles", "city": "Washington, DC", "lat": 38.953, "lon": -77.457 },
-    "ORD": { "type": "airport", "name": "Chicago O'Hare", "city": "Chicago, IL", "lat": 41.978, "lon": -87.905 },
-    "MDW": { "type": "airport", "name": "Chicago Midway", "city": "Chicago, IL", "lat": 41.786, "lon": -87.752 },
-    "LAX": { "type": "airport", "name": "Los Angeles International", "city": "Los Angeles, CA", "lat": 33.941, "lon": -118.408 },
-    "PHX": { "type": "airport", "name": "Phoenix Sky Harbor", "city": "Phoenix, AZ", "lat": 33.435, "lon": -112.01 },
-    "SLC": { "type": "airport", "name": "Salt Lake City", "city": "Salt Lake City, UT", "lat": 40.789, "lon": -111.978 },
-    "DFW": { "type": "airport", "name": "Dallas/Fort Worth", "city": "Dallas, TX", "lat": 32.897, "lon": -97.038 },
-    "CLE": { "type": "airport", "name": "Cleveland Hopkins", "city": "Cleveland, OH", "lat": 41.412, "lon": -81.85 },
-    "TTN": { "type": "airport", "name": "Trenton-Mercer", "city": "Trenton, NJ", "lat": 40.277, "lon": -74.813 },
-    "SAN": { "type": "airport", "name": "San Diego International", "city": "San Diego, CA", "lat": 32.734, "lon": -117.19 },
-    "SNA": { "type": "airport", "name": "John Wayne Orange County", "city": "Santa Ana, CA", "lat": 33.676, "lon": -117.868 },
-    "ONT": { "type": "airport", "name": "Ontario International", "city": "Ontario, CA", "lat": 34.056, "lon": -117.601 },
-    "PDX": { "type": "airport", "name": "Portland International", "city": "Portland, OR", "lat": 45.589, "lon": -122.597 },
-    "DTW": { "type": "airport", "name": "Detroit Metro", "city": "Detroit, MI", "lat": 42.212, "lon": -83.353 },
-    "MCI": { "type": "airport", "name": "Kansas City International", "city": "Kansas City, MO", "lat": 39.298, "lon": -94.714 },
-    "BNA": { "type": "airport", "name": "Nashville International", "city": "Nashville, TN", "lat": 36.126, "lon": -86.678 },
-    "MSP": { "type": "airport", "name": "Minneapolis-St Paul", "city": "Minneapolis, MN", "lat": 44.882, "lon": -93.222 },
-    "IND": { "type": "airport", "name": "Indianapolis International", "city": "Indianapolis, IN", "lat": 39.717, "lon": -86.294 },
-    "MKE": { "type": "airport", "name": "Milwaukee Mitchell", "city": "Milwaukee, WI", "lat": 42.947, "lon": -87.897 },
-    "MEM": { "type": "airport", "name": "Memphis International", "city": "Memphis, TN", "lat": 35.042, "lon": -89.977 },
-    "BOI": { "type": "airport", "name": "Boise Airport", "city": "Boise, ID", "lat": 43.564, "lon": -116.223 },
-
-    "EMY": { "type": "rail", "name": "Emeryville Amtrak", "city": "Emeryville, CA (SF Bay)", "lat": 37.84, "lon": -122.291 },
-    "LAUS": { "type": "rail", "name": "Los Angeles Union Station", "city": "Los Angeles, CA", "lat": 34.056, "lon": -118.234 },
-    "CHI": { "type": "rail", "name": "Chicago Union Station", "city": "Chicago, IL", "lat": 41.879, "lon": -87.64 },
-    "WAS": { "type": "rail", "name": "Washington Union Station", "city": "Washington, DC", "lat": 38.897, "lon": -77.006 },
-    "CVS": { "type": "rail", "name": "Charlottesville Amtrak", "city": "Charlottesville, VA", "lat": 38.031, "lon": -78.492 },
-    "RVR": { "type": "rail", "name": "Richmond Staples Mill Rd Amtrak", "city": "Richmond, VA", "lat": 37.606, "lon": -77.487 },
-    "NFK": { "type": "rail", "name": "Norfolk Amtrak", "city": "Norfolk, VA", "lat": 36.842, "lon": -76.279 },
-
-    "LAS_BUS": { "type": "bus", "name": "Las Vegas bus terminal", "city": "Las Vegas, NV", "lat": 36.171, "lon": -115.144 },
-    "SF_BUS": { "type": "bus", "name": "Salesforce Transit Center", "city": "San Francisco, CA", "lat": 37.789, "lon": -122.396 },
-    "LA_BUS": { "type": "bus", "name": "Los Angeles bus terminal (Union Station)", "city": "Los Angeles, CA", "lat": 34.056, "lon": -118.234 },
-    "DEN_BUS": { "type": "bus", "name": "Denver Bus Center", "city": "Denver, CO", "lat": 39.747, "lon": -104.99 },
-    "CHI_BUS": { "type": "bus", "name": "Chicago bus terminal", "city": "Chicago, IL", "lat": 41.875, "lon": -87.643 },
-    "DC_BUS": { "type": "bus", "name": "Washington DC bus terminal (Union Station)", "city": "Washington, DC", "lat": 38.897, "lon": -77.006 },
-    "RIC_BUS": { "type": "bus", "name": "Richmond bus stop", "city": "Richmond, VA", "lat": 37.545, "lon": -77.437 },
-    "NFK_BUS": { "type": "bus", "name": "Norfolk bus stop", "city": "Norfolk, VA", "lat": 36.851, "lon": -76.286 }
+    "RIC": {
+      "type": "airport",
+      "name": "Richmond International",
+      "city": "Richmond, VA",
+      "lat": 37.505,
+      "lon": -77.32
+    },
+    "ORF": {
+      "type": "airport",
+      "name": "Norfolk International",
+      "city": "Norfolk, VA",
+      "lat": 36.895,
+      "lon": -76.201
+    },
+    "PHF": {
+      "type": "airport",
+      "name": "Newport News/Williamsburg",
+      "city": "Newport News, VA",
+      "lat": 37.132,
+      "lon": -76.493
+    },
+    "LAS": {
+      "type": "airport",
+      "name": "Harry Reid International",
+      "city": "Las Vegas, NV",
+      "lat": 36.086,
+      "lon": -115.154,
+      "amtrakCode": "LVS"
+    },
+    "SFO": {
+      "type": "airport",
+      "name": "San Francisco International",
+      "city": "San Francisco, CA",
+      "lat": 37.622,
+      "lon": -122.379
+    },
+    "OAK": {
+      "type": "airport",
+      "name": "Oakland International",
+      "city": "Oakland, CA",
+      "lat": 37.712,
+      "lon": -122.213
+    },
+    "SJC": {
+      "type": "airport",
+      "name": "San Jose Mineta International",
+      "city": "San Jose, CA",
+      "lat": 37.363,
+      "lon": -121.929
+    },
+    "DEN": {
+      "type": "airport",
+      "name": "Denver International",
+      "city": "Denver, CO",
+      "lat": 39.862,
+      "lon": -104.673
+    },
+    "MCO": {
+      "type": "airport",
+      "name": "Orlando International",
+      "city": "Orlando, FL",
+      "lat": 28.431,
+      "lon": -81.308
+    },
+    "ATL": {
+      "type": "airport",
+      "name": "Hartsfield-Jackson Atlanta",
+      "city": "Atlanta, GA",
+      "lat": 33.641,
+      "lon": -84.427
+    },
+    "PHL": {
+      "type": "airport",
+      "name": "Philadelphia International",
+      "city": "Philadelphia, PA",
+      "lat": 39.874,
+      "lon": -75.243
+    },
+    "CLT": {
+      "type": "airport",
+      "name": "Charlotte Douglas",
+      "city": "Charlotte, NC",
+      "lat": 35.214,
+      "lon": -80.943
+    },
+    "RDU": {
+      "type": "airport",
+      "name": "Raleigh-Durham",
+      "city": "Raleigh, NC",
+      "lat": 35.878,
+      "lon": -78.788
+    },
+    "BWI": {
+      "type": "airport",
+      "name": "Baltimore/Washington",
+      "city": "Baltimore, MD",
+      "lat": 39.177,
+      "lon": -76.669
+    },
+    "DCA": {
+      "type": "airport",
+      "name": "Reagan Washington National",
+      "city": "Washington, DC",
+      "lat": 38.852,
+      "lon": -77.038
+    },
+    "IAD": {
+      "type": "airport",
+      "name": "Washington Dulles",
+      "city": "Washington, DC",
+      "lat": 38.953,
+      "lon": -77.457
+    },
+    "ORD": {
+      "type": "airport",
+      "name": "Chicago O'Hare",
+      "city": "Chicago, IL",
+      "lat": 41.978,
+      "lon": -87.905
+    },
+    "MDW": {
+      "type": "airport",
+      "name": "Chicago Midway",
+      "city": "Chicago, IL",
+      "lat": 41.786,
+      "lon": -87.752
+    },
+    "LAX": {
+      "type": "airport",
+      "name": "Los Angeles International",
+      "city": "Los Angeles, CA",
+      "lat": 33.941,
+      "lon": -118.408
+    },
+    "PHX": {
+      "type": "airport",
+      "name": "Phoenix Sky Harbor",
+      "city": "Phoenix, AZ",
+      "lat": 33.435,
+      "lon": -112.01
+    },
+    "SLC": {
+      "type": "airport",
+      "name": "Salt Lake City",
+      "city": "Salt Lake City, UT",
+      "lat": 40.789,
+      "lon": -111.978
+    },
+    "DFW": {
+      "type": "airport",
+      "name": "Dallas/Fort Worth",
+      "city": "Dallas, TX",
+      "lat": 32.897,
+      "lon": -97.038
+    },
+    "CLE": {
+      "type": "airport",
+      "name": "Cleveland Hopkins",
+      "city": "Cleveland, OH",
+      "lat": 41.412,
+      "lon": -81.85
+    },
+    "TTN": {
+      "type": "airport",
+      "name": "Trenton-Mercer",
+      "city": "Trenton, NJ",
+      "lat": 40.277,
+      "lon": -74.813
+    },
+    "SAN": {
+      "type": "airport",
+      "name": "San Diego International",
+      "city": "San Diego, CA",
+      "lat": 32.734,
+      "lon": -117.19
+    },
+    "SNA": {
+      "type": "airport",
+      "name": "John Wayne Orange County",
+      "city": "Santa Ana, CA",
+      "lat": 33.676,
+      "lon": -117.868
+    },
+    "ONT": {
+      "type": "airport",
+      "name": "Ontario International",
+      "city": "Ontario, CA",
+      "lat": 34.056,
+      "lon": -117.601
+    },
+    "PDX": {
+      "type": "airport",
+      "name": "Portland International",
+      "city": "Portland, OR",
+      "lat": 45.589,
+      "lon": -122.597
+    },
+    "DTW": {
+      "type": "airport",
+      "name": "Detroit Metro",
+      "city": "Detroit, MI",
+      "lat": 42.212,
+      "lon": -83.353
+    },
+    "MCI": {
+      "type": "airport",
+      "name": "Kansas City International",
+      "city": "Kansas City, MO",
+      "lat": 39.298,
+      "lon": -94.714
+    },
+    "BNA": {
+      "type": "airport",
+      "name": "Nashville International",
+      "city": "Nashville, TN",
+      "lat": 36.126,
+      "lon": -86.678
+    },
+    "MSP": {
+      "type": "airport",
+      "name": "Minneapolis-St Paul",
+      "city": "Minneapolis, MN",
+      "lat": 44.882,
+      "lon": -93.222
+    },
+    "IND": {
+      "type": "airport",
+      "name": "Indianapolis International",
+      "city": "Indianapolis, IN",
+      "lat": 39.717,
+      "lon": -86.294
+    },
+    "MKE": {
+      "type": "airport",
+      "name": "Milwaukee Mitchell",
+      "city": "Milwaukee, WI",
+      "lat": 42.947,
+      "lon": -87.897
+    },
+    "MEM": {
+      "type": "airport",
+      "name": "Memphis International",
+      "city": "Memphis, TN",
+      "lat": 35.042,
+      "lon": -89.977
+    },
+    "BOI": {
+      "type": "airport",
+      "name": "Boise Airport",
+      "city": "Boise, ID",
+      "lat": 43.564,
+      "lon": -116.223
+    },
+    "EMY": {
+      "type": "rail",
+      "name": "Emeryville Amtrak",
+      "city": "Emeryville, CA (SF Bay)",
+      "lat": 37.84,
+      "lon": -122.291,
+      "amtrakCode": "EMY"
+    },
+    "LAUS": {
+      "type": "rail",
+      "name": "Los Angeles Union Station",
+      "city": "Los Angeles, CA",
+      "lat": 34.056,
+      "lon": -118.234,
+      "amtrakCode": "LAX"
+    },
+    "CHI": {
+      "type": "rail",
+      "name": "Chicago Union Station",
+      "city": "Chicago, IL",
+      "lat": 41.879,
+      "lon": -87.64,
+      "amtrakCode": "CHI"
+    },
+    "WAS": {
+      "type": "rail",
+      "name": "Washington Union Station",
+      "city": "Washington, DC",
+      "lat": 38.897,
+      "lon": -77.006,
+      "amtrakCode": "WAS"
+    },
+    "CVS": {
+      "type": "rail",
+      "name": "Charlottesville Amtrak",
+      "city": "Charlottesville, VA",
+      "lat": 38.031,
+      "lon": -78.492,
+      "amtrakCode": "CVS"
+    },
+    "RVR": {
+      "type": "rail",
+      "name": "Richmond Staples Mill Rd Amtrak",
+      "city": "Richmond, VA",
+      "lat": 37.606,
+      "lon": -77.487,
+      "amtrakCode": "RVR"
+    },
+    "NFK": {
+      "type": "rail",
+      "name": "Norfolk Amtrak",
+      "city": "Norfolk, VA",
+      "lat": 36.842,
+      "lon": -76.279,
+      "amtrakCode": "NFK"
+    },
+    "LAS_BUS": {
+      "type": "bus",
+      "name": "Las Vegas bus terminal",
+      "city": "Las Vegas, NV",
+      "lat": 36.171,
+      "lon": -115.144
+    },
+    "SF_BUS": {
+      "type": "bus",
+      "name": "Salesforce Transit Center",
+      "city": "San Francisco, CA",
+      "lat": 37.789,
+      "lon": -122.396
+    },
+    "LA_BUS": {
+      "type": "bus",
+      "name": "Los Angeles bus terminal (Union Station)",
+      "city": "Los Angeles, CA",
+      "lat": 34.056,
+      "lon": -118.234
+    },
+    "DEN_BUS": {
+      "type": "bus",
+      "name": "Denver Bus Center",
+      "city": "Denver, CO",
+      "lat": 39.747,
+      "lon": -104.99
+    },
+    "CHI_BUS": {
+      "type": "bus",
+      "name": "Chicago bus terminal",
+      "city": "Chicago, IL",
+      "lat": 41.875,
+      "lon": -87.643
+    },
+    "DC_BUS": {
+      "type": "bus",
+      "name": "Washington DC bus terminal (Union Station)",
+      "city": "Washington, DC",
+      "lat": 38.897,
+      "lon": -77.006
+    },
+    "RIC_BUS": {
+      "type": "bus",
+      "name": "Richmond bus stop",
+      "city": "Richmond, VA",
+      "lat": 37.545,
+      "lon": -77.437
+    },
+    "NFK_BUS": {
+      "type": "bus",
+      "name": "Norfolk bus stop",
+      "city": "Norfolk, VA",
+      "lat": 36.851,
+      "lon": -76.286
+    }
   },
   "localLinks": [
-    { "a": "SFO", "b": "EMY", "how": "BART to MacArthur + AC Transit/rideshare", "hours": 1.3, "costUSD": { "min": 11, "max": 30 } },
-    { "a": "SFO", "b": "SF_BUS", "how": "BART to downtown SF", "hours": 0.7, "costUSD": { "min": 10, "max": 12 } },
-    { "a": "OAK", "b": "EMY", "how": "BART + rideshare", "hours": 1.0, "costUSD": { "min": 10, "max": 25 } },
-    { "a": "OAK", "b": "SF_BUS", "how": "BART to downtown SF", "hours": 0.8, "costUSD": { "min": 10, "max": 12 } },
-    { "a": "SJC", "b": "SF_BUS", "how": "Caltrain to SF", "hours": 1.8, "costUSD": { "min": 11, "max": 15 } },
-    { "a": "SJC", "b": "EMY", "how": "Caltrain/BART + transfer", "hours": 2.2, "costUSD": { "min": 15, "max": 30 } },
-    { "a": "SFO", "b": "OAK", "how": "BART across the bay", "hours": 1.2, "costUSD": { "min": 11, "max": 13 } },
-    { "a": "SFO", "b": "SJC", "how": "BART + Caltrain or rideshare", "hours": 1.7, "costUSD": { "min": 15, "max": 60 } },
-    { "a": "LAS", "b": "LAS_BUS", "how": "RTC transit or rideshare", "hours": 0.6, "costUSD": { "min": 4, "max": 20 } },
-    { "a": "LAX", "b": "LAUS", "how": "LAX FlyAway bus", "hours": 0.9, "costUSD": { "min": 10, "max": 13 } },
-    { "a": "LAX", "b": "LA_BUS", "how": "LAX FlyAway bus to Union Station", "hours": 0.9, "costUSD": { "min": 10, "max": 13 } },
-    { "a": "DEN", "b": "DEN_BUS", "how": "RTD A Line + walk", "hours": 1.0, "costUSD": { "min": 10, "max": 12 } },
-    { "a": "ORD", "b": "CHI", "how": "CTA Blue Line + walk", "hours": 1.1, "costUSD": { "min": 5, "max": 6 } },
-    { "a": "MDW", "b": "CHI", "how": "CTA Orange Line + walk", "hours": 0.9, "costUSD": { "min": 3, "max": 4 } },
-    { "a": "CHI", "b": "CHI_BUS", "how": "walk", "hours": 0.2, "costUSD": 0 },
-    { "a": "WAS", "b": "DC_BUS", "how": "same complex", "hours": 0.1, "costUSD": 0 },
-    { "a": "WAS", "b": "DCA", "how": "Metro Yellow/Blue Line", "hours": 0.5, "costUSD": { "min": 2, "max": 4 } },
-    { "a": "WAS", "b": "IAD", "how": "Metro Silver Line + walk", "hours": 1.2, "costUSD": { "min": 6, "max": 8 } },
-    { "a": "BWI", "b": "WAS", "how": "MARC Penn Line / Amtrak from BWI Rail Station", "hours": 0.9, "costUSD": { "min": 8, "max": 20 } },
-    { "a": "RVR", "b": "RIC", "how": "rideshare (7 mi)", "hours": 0.4, "costUSD": { "min": 15, "max": 30 } },
-    { "a": "RVR", "b": "RIC_BUS", "how": "rideshare/GRTC", "hours": 0.4, "costUSD": { "min": 5, "max": 20 } },
-    { "a": "RIC_BUS", "b": "RIC", "how": "rideshare/GRTC", "hours": 0.4, "costUSD": { "min": 5, "max": 25 } },
-    { "a": "NFK", "b": "ORF", "how": "rideshare (7 mi)", "hours": 0.4, "costUSD": { "min": 12, "max": 25 } },
-    { "a": "NFK_BUS", "b": "ORF", "how": "rideshare", "hours": 0.4, "costUSD": { "min": 12, "max": 25 } }
+    {
+      "a": "SFO",
+      "b": "EMY",
+      "how": "BART to MacArthur + AC Transit/rideshare",
+      "hours": 1.3,
+      "costUSD": {
+        "min": 11,
+        "max": 30
+      }
+    },
+    {
+      "a": "SFO",
+      "b": "SF_BUS",
+      "how": "BART to downtown SF",
+      "hours": 0.7,
+      "costUSD": {
+        "min": 10,
+        "max": 12
+      }
+    },
+    {
+      "a": "OAK",
+      "b": "EMY",
+      "how": "BART + rideshare",
+      "hours": 1.0,
+      "costUSD": {
+        "min": 10,
+        "max": 25
+      }
+    },
+    {
+      "a": "OAK",
+      "b": "SF_BUS",
+      "how": "BART to downtown SF",
+      "hours": 0.8,
+      "costUSD": {
+        "min": 10,
+        "max": 12
+      }
+    },
+    {
+      "a": "SJC",
+      "b": "SF_BUS",
+      "how": "Caltrain to SF",
+      "hours": 1.8,
+      "costUSD": {
+        "min": 11,
+        "max": 15
+      }
+    },
+    {
+      "a": "SJC",
+      "b": "EMY",
+      "how": "Caltrain/BART + transfer",
+      "hours": 2.2,
+      "costUSD": {
+        "min": 15,
+        "max": 30
+      }
+    },
+    {
+      "a": "SFO",
+      "b": "OAK",
+      "how": "BART across the bay",
+      "hours": 1.2,
+      "costUSD": {
+        "min": 11,
+        "max": 13
+      }
+    },
+    {
+      "a": "SFO",
+      "b": "SJC",
+      "how": "BART + Caltrain or rideshare",
+      "hours": 1.7,
+      "costUSD": {
+        "min": 15,
+        "max": 60
+      }
+    },
+    {
+      "a": "LAS",
+      "b": "LAS_BUS",
+      "how": "RTC transit or rideshare",
+      "hours": 0.6,
+      "costUSD": {
+        "min": 4,
+        "max": 20
+      }
+    },
+    {
+      "a": "LAX",
+      "b": "LAUS",
+      "how": "LAX FlyAway bus",
+      "hours": 0.9,
+      "costUSD": {
+        "min": 10,
+        "max": 13
+      }
+    },
+    {
+      "a": "LAX",
+      "b": "LA_BUS",
+      "how": "LAX FlyAway bus to Union Station",
+      "hours": 0.9,
+      "costUSD": {
+        "min": 10,
+        "max": 13
+      }
+    },
+    {
+      "a": "DEN",
+      "b": "DEN_BUS",
+      "how": "RTD A Line + walk",
+      "hours": 1.0,
+      "costUSD": {
+        "min": 10,
+        "max": 12
+      }
+    },
+    {
+      "a": "ORD",
+      "b": "CHI",
+      "how": "CTA Blue Line + walk",
+      "hours": 1.1,
+      "costUSD": {
+        "min": 5,
+        "max": 6
+      }
+    },
+    {
+      "a": "MDW",
+      "b": "CHI",
+      "how": "CTA Orange Line + walk",
+      "hours": 0.9,
+      "costUSD": {
+        "min": 3,
+        "max": 4
+      }
+    },
+    {
+      "a": "CHI",
+      "b": "CHI_BUS",
+      "how": "walk",
+      "hours": 0.2,
+      "costUSD": 0
+    },
+    {
+      "a": "WAS",
+      "b": "DC_BUS",
+      "how": "same complex",
+      "hours": 0.1,
+      "costUSD": 0
+    },
+    {
+      "a": "WAS",
+      "b": "DCA",
+      "how": "Metro Yellow/Blue Line",
+      "hours": 0.5,
+      "costUSD": {
+        "min": 2,
+        "max": 4
+      }
+    },
+    {
+      "a": "WAS",
+      "b": "IAD",
+      "how": "Metro Silver Line + walk",
+      "hours": 1.2,
+      "costUSD": {
+        "min": 6,
+        "max": 8
+      }
+    },
+    {
+      "a": "BWI",
+      "b": "WAS",
+      "how": "MARC Penn Line / Amtrak from BWI Rail Station",
+      "hours": 0.9,
+      "costUSD": {
+        "min": 8,
+        "max": 20
+      }
+    },
+    {
+      "a": "RVR",
+      "b": "RIC",
+      "how": "rideshare (7 mi)",
+      "hours": 0.4,
+      "costUSD": {
+        "min": 15,
+        "max": 30
+      }
+    },
+    {
+      "a": "RVR",
+      "b": "RIC_BUS",
+      "how": "rideshare/GRTC",
+      "hours": 0.4,
+      "costUSD": {
+        "min": 5,
+        "max": 20
+      }
+    },
+    {
+      "a": "RIC_BUS",
+      "b": "RIC",
+      "how": "rideshare/GRTC",
+      "hours": 0.4,
+      "costUSD": {
+        "min": 5,
+        "max": 25
+      }
+    },
+    {
+      "a": "NFK",
+      "b": "ORF",
+      "how": "rideshare (7 mi)",
+      "hours": 0.4,
+      "costUSD": {
+        "min": 12,
+        "max": 25
+      }
+    },
+    {
+      "a": "NFK_BUS",
+      "b": "ORF",
+      "how": "rideshare",
+      "hours": 0.4,
+      "costUSD": {
+        "min": 12,
+        "max": 25
+      }
+    }
   ],
   "cityGroups": {
-    "richmond": ["RIC", "RVR", "RIC_BUS"],
-    "norfolk": ["ORF", "NFK", "NFK_BUS"],
-    "bayArea": ["SFO", "OAK", "SJC", "EMY", "SF_BUS"],
-    "lasVegas": ["LAS", "LAS_BUS"],
-    "washington": ["DCA", "IAD", "WAS", "DC_BUS", "BWI"],
-    "chicago": ["ORD", "MDW", "CHI", "CHI_BUS"],
-    "losAngeles": ["LAX", "LAUS", "LA_BUS"],
-    "denver": ["DEN", "DEN_BUS"]
+    "richmond": [
+      "RIC",
+      "RVR",
+      "RIC_BUS"
+    ],
+    "norfolk": [
+      "ORF",
+      "NFK",
+      "NFK_BUS"
+    ],
+    "bayArea": [
+      "SFO",
+      "OAK",
+      "SJC",
+      "EMY",
+      "SF_BUS"
+    ],
+    "lasVegas": [
+      "LAS",
+      "LAS_BUS"
+    ],
+    "washington": [
+      "DCA",
+      "IAD",
+      "WAS",
+      "DC_BUS",
+      "BWI"
+    ],
+    "chicago": [
+      "ORD",
+      "MDW",
+      "CHI",
+      "CHI_BUS"
+    ],
+    "losAngeles": [
+      "LAX",
+      "LAUS",
+      "LA_BUS"
+    ],
+    "denver": [
+      "DEN",
+      "DEN_BUS"
+    ]
   }
 }
