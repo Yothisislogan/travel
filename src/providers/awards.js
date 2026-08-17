@@ -7,6 +7,16 @@ const seed = loadJSON('src/data/backup-flights.json');
 
 const EAST_TARGETS = ['RIC', 'ORF', 'DCA', 'IAD', 'BWI', 'RDU'];
 
+// Seats.aero Route.Source uses lowercase program ids; map them to the program
+// names used in backup-flights.json.
+const SEATS_AERO_PROGRAMS = {
+  american: 'American AAdvantage',
+  united: 'United MileagePlus',
+  delta: 'Delta SkyMiles',
+  alaska: 'Atmos Rewards',
+  southwest: 'Southwest Rapid Rewards',
+};
+
 export function awardOptions(from) {
   const snap = readSnapshot().sections.awards;
   const live = snap?.status === 'live' ? snap.data?.availability ?? [] : [];
@@ -56,10 +66,12 @@ export async function sync({ date } = {}) {
       }
       for (const item of res.data?.data ?? []) {
         if (item.YAvailable) {
+          const source = (item.Route?.Source ?? '').toLowerCase();
           availability.push({
             from: item.Route?.OriginAirport ?? from,
             to: item.Route?.DestinationAirport,
-            program: item.Route?.Source,
+            program: SEATS_AERO_PROGRAMS[source] ?? item.Route?.Source,
+            source,
             miles: item.YMileageCost ? +item.YMileageCost : null,
             date: item.Date,
           });
