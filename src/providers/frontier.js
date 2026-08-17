@@ -13,6 +13,7 @@ const rules = loadJSON('src/data/gowild.json');
 const seedRoutes = loadJSON('src/data/frontier-routes.json');
 const sources = loadJSON('src/data/sources.json');
 const airports = loadJSON('src/data/airports.json');
+const config = loadJSON('trip.config.json');
 
 export function gowildRules() {
   return rules;
@@ -59,10 +60,22 @@ export function frequencyOf(from, to) {
 }
 
 // Is `date` (ISO) bookable under GoWild right now? Domestic: opens the day
-// before departure (Eastern time).
+// before departure (Eastern time; community reports put inventory release
+// around midnight ET, unofficially). Promo passes may allow advance booking -
+// set trip.config.json gowild.promoAdvanceBookingThrough.
 export function bookingWindow(dateISO) {
   const today = todayISO();
   const opensOn = addDaysISO(dateISO, -1);
+  const promoThrough = config.gowild?.promoAdvanceBookingThrough ?? null;
+  if (promoThrough && dateISO <= promoThrough && today <= dateISO) {
+    return {
+      date: dateISO,
+      opensOn: today,
+      canBookNow: true,
+      promo: true,
+      note: `Bookable NOW under your pass promo (advance booking through ${promoThrough}; early-booking fee may apply).`,
+    };
+  }
   const canBookNow = today >= opensOn && today <= dateISO;
   return {
     date: dateISO,
@@ -71,9 +84,22 @@ export function bookingWindow(dateISO) {
     note: canBookNow
       ? 'Inside the GoWild booking window - book now if a GoWild fare shows.'
       : today < opensOn
-        ? `GoWild booking for ${dateISO} opens ${opensOn} (Eastern time).`
+        ? `GoWild booking for ${dateISO} opens ${opensOn} (Eastern time, ~midnight per community reports).`
         : 'Date is in the past.',
   };
+}
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+export function dayOfWeek(dateISO) {
+  return DAY_NAMES[new Date(`${dateISO}T12:00:00Z`).getUTCDay()];
+}
+
+// true/false when the frequency data names weekdays, null when unknown.
+export function operatesOn(freqDays, dateISO) {
+  if (!freqDays) return null;
+  const named = DAY_NAMES.filter((d) => freqDays.includes(d));
+  if (!named.length) return null;
+  return named.includes(dayOfWeek(dateISO));
 }
 
 export function isBlackout(dateISO) {
@@ -139,12 +165,27 @@ export function findGowildPaths(fromList, toList, { maxConnections = 1 } = {}) {
 export function gowildOptions(fromList, toList, dateISO) {
   const window = bookingWindow(dateISO);
   const blackout = isBlackout(dateISO);
-  const paths = findGowildPaths(fromList, toList).map((p) => ({
-    ...p,
-    mode: 'gowild',
-    searchLink: searchLink(p.from, p.to, dateISO),
-  }));
-  return { date: dateISO, window, blackout, paths, freshness: routeMap().asOf, warning: routeMap().freshnessWarning };
+  const paths = findGowildPaths(fromList, toList).map((p) => {
+    // Does every segment with named operating days run on this date's weekday?
+    const segOps = p.segments.map((s) => operatesOn(frequencyOf(s.from, s.to)?.days, dateISO));
+    const operatesOnDate = segOps.some((x) => x === false) ? false : segOps.every((x) => x === true) ? true : null;
+    return {
+      ...p,
+      mode: 'gowild',
+      operatesOnDate,
+      dayOfWeek: dayOfWeek(dateISO),
+      searchLink: searchLink(p.from, p.to, dateISO),
+    };
+  });
+  return {
+    date: dateISO,
+    window,
+    blackout,
+    paths,
+    trackers: sources.frontier.communityTrackers ?? [],
+    freshness: routeMap().asOf,
+    warning: routeMap().freshnessWarning,
+  };
 }
 
 // Sync: probe the booking site (reachability only - honest about what a probe

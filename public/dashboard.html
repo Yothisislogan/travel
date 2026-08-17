@@ -110,8 +110,12 @@ function gowildHTML(d) {
     h += '<div class="row">' + tag('gowild') + '<b>' + esc(p.from) + (p.via ? ' &rarr; ' + esc(p.via) : '') + ' &rarr; ' + esc(p.to) + '</b>'
       + (p.via ? '' : ' <span class="tag">nonstop</span>')
       + (p.daysPerWeek && p.daysPerWeek < 7 ? ' <span class="tag" style="color:var(--warn)">' + esc(p.frequencyNote || 'not daily') + '</span>' : '')
+      + (p.operatesOnDate === false ? ' <span class="tag" style="color:var(--bad)">does not run ' + esc(p.dayOfWeek) + '</span>' : '')
       + ' <span class="dim">~' + hrs(p.totalHours) + ' &middot; est ' + money(p.estCostUSD) + ' taxes/fees</span>'
       + ' &middot; <a target="_blank" href="' + esc(p.searchLink) + '">check fares &nearr;</a></div>';
+  }
+  if (d.trackers && d.trackers.length) {
+    h += '<div class="dim">Live GoWild seat checks: ' + d.trackers.map((t) => '<a target="_blank" href="' + esc(t.url) + '">' + esc(t.name) + ' &nearr;</a>').join(' &middot; ') + '</div>';
   }
   h += '<div class="dim">Route map: ' + esc(d.freshness) + ' &middot; ' + esc(d.warning) + '</div>';
   return h;

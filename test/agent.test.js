@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { haversineMiles, estimateFlightHours, fmtHours, fmtMoney, addCosts, costMidpoint, addDaysISO } from '../src/util.js';
-import { findGowildPaths, bookingWindow, isBlackout, gowildOptions, frontierDate } from '../src/providers/frontier.js';
+import { findGowildPaths, bookingWindow, isBlackout, gowildOptions, frontierDate, dayOfWeek, operatesOn } from '../src/providers/frontier.js';
 import { planReturn, transferBuffer, buildEdges } from '../src/planner.js';
 import { backupCashOptions } from '../src/providers/flights.js';
 import { awardOptions } from '../src/providers/awards.js';
@@ -76,6 +76,25 @@ test('gowildOptions decorates with window + links', () => {
 test('frontierDate formats for the booking site', () => {
   assert.equal(frontierDate('2026-08-18'), 'Aug 18, 2026');
   assert.equal(frontierDate('2026-12-05'), 'Dec 5, 2026');
+});
+
+test('day-of-week service checks', () => {
+  assert.equal(dayOfWeek('2026-08-20'), 'Thu');
+  assert.equal(dayOfWeek('2026-08-23'), 'Sun');
+  assert.equal(operatesOn('Thu/Sun', '2026-08-20'), true);
+  assert.equal(operatesOn('Thu/Sun', '2026-08-18'), false, 'Tuesday not in Thu/Sun');
+  assert.equal(operatesOn('daily', '2026-08-18'), null, 'no named days -> unknown');
+  assert.equal(operatesOn(null, '2026-08-18'), null);
+});
+
+test('gowildOptions flags paths that do not run on the chosen date', () => {
+  const tue = gowildOptions(['RIC'], ['LAS'], '2026-08-18');
+  const viaDen = tue.paths.find((p) => p.via === 'DEN');
+  assert.equal(viaDen.operatesOnDate, false, 'RIC-DEN is Thu/Sun; Tue should flag false');
+  // On Thursday RIC-DEN runs, but DEN-LAS has no day data -> unknown, not false.
+  const thu = gowildOptions(['RIC'], ['LAS'], '2026-08-20');
+  assert.notEqual(thu.paths.find((p) => p.via === 'DEN').operatesOnDate, false);
+  assert.ok(tue.trackers.length >= 1, 'community trackers surfaced');
 });
 
 test('outbound RIC/ORF -> LAS paths exist via researched connections', () => {

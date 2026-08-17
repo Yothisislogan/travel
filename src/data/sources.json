@@ -6,10 +6,15 @@
         "name": "flyfrontier-flight-search-page",
         "url": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true",
         "kind": "html-probe",
-        "notes": "Bot-protected (PerimeterX); a 200 here only proves reachability. Real GoWild availability requires the site/app while logged in."
+        "notes": "Bot-protected (press-and-hold challenges consistent with PerimeterX/HUMAN); a 200 here only proves reachability. Real GoWild availability requires the site/app while logged in. Scrapers report 403s and use randomized delays - this agent only probes, it does not scrape."
       }
     ],
-    "deepLink": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true"
+    "deepLink": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true",
+    "communityTrackers": [
+      { "name": "GoWilder", "url": "https://www.gowilder.net/", "notes": "Hosted GoWild availability search - fastest way to see which flights show GoWild seats" },
+      { "name": "WildFares", "url": "https://www.wildfares.com/", "notes": "GoWild companion with maps, multi-hop routing, real-time availability" }
+    ],
+    "officialApi": "developer.flyfrontier.com is NDC for accredited travel-trade partners only - no hobbyist access"
   },
   "amtraker": {
     "trains": "https://api-v3.amtraker.com/v3/trains",

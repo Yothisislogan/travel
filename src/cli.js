@@ -42,8 +42,12 @@ function printGowildBlock(title, opts) {
   for (const p of opts.paths) {
     const routeStr = p.via ? `${p.from} -> ${p.via} -> ${p.to}` : `${p.from} -> ${p.to} (nonstop)`;
     const freq = p.daysPerWeek && p.daysPerWeek < 7 ? `  [${p.frequencyNote}]` : '';
-    console.log(`  ${routeStr.padEnd(28)} ~${fmtHours(p.totalHours).padEnd(7)} est ${fmtMoney(p.estCostUSD)} in taxes/fees${freq}`);
+    const dayFlag = p.operatesOnDate === false ? `  !! does NOT run on ${p.dayOfWeek}` : '';
+    console.log(`  ${routeStr.padEnd(28)} ~${fmtHours(p.totalHours).padEnd(7)} est ${fmtMoney(p.estCostUSD)} in taxes/fees${freq}${dayFlag}`);
     console.log(dim(`    check: ${p.searchLink}`));
+  }
+  if (opts.trackers?.length) {
+    console.log(dim(`  Community GoWild trackers: ${opts.trackers.map((t) => `${t.name} <${t.url}>`).join('  ')}`));
   }
   console.log(dim(`  Route map: ${opts.freshness}. ${opts.warning}`));
 }

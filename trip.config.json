@@ -13,6 +13,11 @@
       { "name": "Return east", "from": ["SFO", "OAK", "SJC", "LAS"], "to": ["RIC", "ORF"], "mode": "any" }
     ]
   },
+  "gowild": {
+    "passType": "GoWild Fall & Winter 2026 (edit to match your pass)",
+    "promoAdvanceBookingThrough": null,
+    "_comment": "Normally GoWild books day-before only. If your pass promo grants advance booking (e.g. the 2026 Fall & Winter purchase-by-Aug-17 promo allowed booking ahead through 2027-01-04, early-booking fee $29+), set promoAdvanceBookingThrough to that ISO date."
+  },
   "return": {
     "sort": ["time", "cost"],
     "maxLegs": 5,

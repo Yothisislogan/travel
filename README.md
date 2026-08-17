@@ -32,21 +32,23 @@ node src/cli.js sync --section frontier,amtrak     # refresh just some sections
 
 ## How GoWild tracking works (and its honest limits)
 
-GoWild fares are **capacity-controlled and only bookable starting the day before domestic departure** (Eastern time), so "tracking availability" means:
+GoWild fares are **capacity-controlled and normally bookable starting the day before domestic departure** (Eastern time; community reports put inventory release around midnight ET), so "tracking availability" means:
 
-1. The agent knows the **booking window**: for any date it tells you exactly when GoWild booking opens and whether you can book *right now* (`status` and every GoWild view show this).
-2. It knows the **Frontier route map** (seeded in `src/data/frontier-routes.json`, refreshed on `sync`) and computes nonstop + one-connection GoWild paths for each leg of your trip.
-3. It flags **blackout dates** from `src/data/gowild.json`.
-4. It generates **prefilled Frontier search links** for every pair you need to check. Frontier's booking site sits behind bot protection and requires your logged-in GoWild account to show pass fares, so no tool can reliably confirm the final fare for you - the agent gets you one click away with everything precomputed.
+1. The agent knows the **booking window**: for any date it tells you exactly when GoWild booking opens and whether you can book *right now* (`status` and every GoWild view show this). If your pass promo grants advance booking (e.g. the 2026 Fall & Winter purchase-by-Aug-17 promo allowed booking through Jan 4, 2027 for an early-booking fee), set `gowild.promoAdvanceBookingThrough` in `trip.config.json` and the agent treats those dates as bookable now.
+2. It knows the **Frontier route map** (`src/data/frontier-routes.json`, refreshed on `sync`) and computes nonstop + one-connection GoWild paths for each leg - including **day-of-week checks**: RIC's Frontier flights run ~Thu/Sun only, and the agent flags any path that does not operate on your chosen date.
+3. It flags **blackout dates** from `src/data/gowild.json` (2026 calendar; conservative VERIFY placeholders for early 2027). Since 2026, Frontier sells a Peak Day Charge ($79-$159) that unlocks blackout dates.
+4. It generates **prefilled Frontier search links** for every pair you need to check, and links the community trackers (**GoWilder**, **WildFares**) that watch GoWild seat availability in real time. Frontier's booking site sits behind bot protection and requires your logged-in GoWild account to show pass fares, so no self-hosted tool can reliably confirm the final fare - the agent gets you one click away with everything precomputed.
 
 `sync` probes Frontier reachability and refreshes a checklist of pair-searches for the next bookable day; the dashboard renders it with live/seed/stale badges.
+
+**Connection reality check:** Frontier only sells connections its own system builds for published city pairs - never assume two GoWild segments will combine, and prefer same-itinerary connections: a self-built misconnect onto a 2x-weekly route can strand you for days.
 
 ## Live data sources (all optional, all sync-on-request)
 
 | Section | Live source | Without it |
 |---------|-------------|------------|
-| Frontier GoWild | Reachability probe + prefilled search links (no public API exists) | Seed route map + links |
-| Backup cash fares | [Amadeus Self-Service API](https://developers.amadeus.com) - free tier, put keys in `.env` | Seed price ranges + Google Flights/Kayak links |
+| Frontier GoWild | Reachability probe + prefilled search links + community trackers (Frontier's official API is partner-only NDC) | Seed route map + links |
+| Backup cash fares | 1st choice: [SerpAPI](https://serpapi.com) Google Flights (all carriers). Fallback: [Amadeus Self-Service](https://developers.amadeus.com) free tier - **caveat: excludes AA/Delta/Southwest/Breeze** | Seed price ranges + Google Flights/Kayak links |
 | Award (miles) | [Seats.aero Partner API](https://seats.aero) key in `.env` | Seed miles estimates + program search links |
 | Amtrak | [Amtraker](https://amtraker.com) live train status - free, no key | Seed schedules/fares |
 | Intercity bus | (no stable public API) | Seed estimates + FlixBus/Greyhound links |

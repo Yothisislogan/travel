@@ -1,6 +1,10 @@
-// Backup cash flights (non-Frontier). Live prices via the Amadeus Self-Service
-// API when AMADEUS_CLIENT_ID/SECRET are configured; otherwise seed estimates
-// plus prefilled Google Flights/Kayak links.
+// Backup cash flights (non-Frontier). Live prices, in order of preference:
+//   1. SerpAPI google_flights (SERPAPI_KEY) - covers essentially ALL carriers
+//      incl. AA/DL/Southwest/Breeze, which matter most for this backup plan.
+//   2. Amadeus Self-Service (AMADEUS_CLIENT_ID/SECRET) - free tier, but its
+//      content typically EXCLUDES AA, DL, Southwest, Breeze and LCCs, so
+//      prices skew United-and-friends only.
+//   3. Seed estimates + prefilled Google Flights/Kayak links.
 import {
   loadJSON, fetchJSON, loadEnv, readSnapshot, writeSection,
   haversineMiles, estimateFlightHours, todayISO, addDaysISO,
@@ -101,41 +105,76 @@ async function amadeusSearch(auth, from, to, date) {
   return cheapest ?? null;
 }
 
+// ---- SerpAPI google_flights ----
+
+async function serpApiSearch(from, to, date) {
+  const url = `https://serpapi.com/search.json?engine=google_flights&departure_id=${from}&arrival_id=${to}&outbound_date=${date}&type=2&currency=USD&hl=en&api_key=${process.env.SERPAPI_KEY}`;
+  const res = await fetchJSON(url, { timeoutMs: 25000 });
+  if (!res.ok) throw new Error(`SerpAPI HTTP ${res.status}`);
+  const all = [...(res.data?.best_flights ?? []), ...(res.data?.other_flights ?? [])];
+  const cheapest = all
+    .map((o) => ({
+      priceUSD: +o.price,
+      carrier: o.flights?.[0]?.airline,
+      durationHours: o.total_duration ? +(o.total_duration / 60).toFixed(2) : null,
+      stops: (o.flights?.length ?? 1) - 1,
+    }))
+    .filter((o) => Number.isFinite(o.priceUSD))
+    .sort((a, b) => a.priceUSD - b.priceUSD)[0];
+  return cheapest ?? null;
+}
+
+async function priceAllMarkets(searchOne) {
+  const offers = {};
+  const errors = [];
+  for (const from of WEST_ORIGINS) {
+    for (const to of EAST_TARGETS) {
+      if (!seed.markets[marketKey(from, to)]) continue;
+      try {
+        const best = await searchOne(from, to);
+        if (best) offers[marketKey(from, to)] = best;
+      } catch (err) {
+        errors.push(`${from}-${to}: ${err.message}`);
+      }
+    }
+  }
+  return { offers, errors };
+}
+
 export async function sync({ date } = {}) {
   loadEnv();
   const searchDate = date ?? addDaysISO(todayISO(), 1);
-  if (!process.env.AMADEUS_CLIENT_ID || !process.env.AMADEUS_CLIENT_SECRET) {
-    return writeSection('flights', {
-      status: 'seed',
-      data: { searchDate },
-      notes: 'No Amadeus keys configured (.env) - using seed estimates + deep links. Add free Self-Service keys for live prices.',
-    });
-  }
-  try {
-    const auth = await amadeusToken();
-    const offers = {};
-    const errors = [];
-    for (const from of WEST_ORIGINS) {
-      for (const to of EAST_TARGETS) {
-        if (!seed.markets[marketKey(from, to)]) continue;
-        try {
-          const best = await amadeusSearch(auth, from, to, searchDate);
-          if (best) offers[marketKey(from, to)] = best;
-        } catch (err) {
-          errors.push(`${from}-${to}: ${err.message}`);
-        }
-      }
-    }
+
+  if (process.env.SERPAPI_KEY) {
+    const { offers, errors } = await priceAllMarkets((f, t) => serpApiSearch(f, t, searchDate));
     return writeSection('flights', {
       status: Object.keys(offers).length ? 'live' : 'error',
-      data: { searchDate, offers, errors },
-      notes: `Amadeus live search for ${searchDate}: ${Object.keys(offers).length} markets priced.`,
-    });
-  } catch (err) {
-    return writeSection('flights', {
-      status: 'error',
-      data: { searchDate },
-      notes: `Amadeus sync failed: ${err.message}. Using seed estimates.`,
+      data: { searchDate, offers, errors, source: 'serpapi' },
+      notes: `SerpAPI (Google Flights) for ${searchDate}: ${Object.keys(offers).length} markets priced (all carriers).`,
     });
   }
+
+  if (process.env.AMADEUS_CLIENT_ID && process.env.AMADEUS_CLIENT_SECRET) {
+    try {
+      const auth = await amadeusToken();
+      const { offers, errors } = await priceAllMarkets((f, t) => amadeusSearch(auth, f, t, searchDate));
+      return writeSection('flights', {
+        status: Object.keys(offers).length ? 'live' : 'error',
+        data: { searchDate, offers, errors, source: 'amadeus' },
+        notes: `Amadeus live search for ${searchDate}: ${Object.keys(offers).length} markets priced. CAVEAT: Amadeus Self-Service typically excludes AA/Delta/Southwest/Breeze - cross-check the deep links.`,
+      });
+    } catch (err) {
+      return writeSection('flights', {
+        status: 'error',
+        data: { searchDate },
+        notes: `Amadeus sync failed: ${err.message}. Using seed estimates.`,
+      });
+    }
+  }
+
+  return writeSection('flights', {
+    status: 'seed',
+    data: { searchDate },
+    notes: 'No SERPAPI_KEY or Amadeus keys configured (.env) - using seed estimates + deep links. SerpAPI covers all carriers; Amadeus free tier misses AA/DL/WN/Breeze.',
+  });
 }
