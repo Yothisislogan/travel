@@ -207,7 +207,10 @@ export async function sync({ date } = {}) {
     const res = await fetchJSON(url, { timeoutMs: 12000 });
     probes.push({ name: attempt.name, url, reachable: res.status > 0, httpStatus: res.status, notes: attempt.notes });
   }
-  const reachable = probes.some((p) => p.reachable && p.httpStatus < 500);
+  // 4xx (e.g. 403) usually means bot protection or a proxy refusing us -
+  // that is NOT live data, just network reachability.
+  const reachable = probes.some((p) => p.httpStatus >= 200 && p.httpStatus < 400);
+  const blocked = !reachable && probes.some((p) => p.httpStatus >= 400);
   const checklist = pairs.map(([o, d]) => ({
     pair: `${o}-${d}`,
     date: checkDate,
@@ -219,6 +222,8 @@ export async function sync({ date } = {}) {
     data: { routes: seedRoutes.routes, asOf: seedRoutes.asOf, probes, checklist },
     notes: reachable
       ? 'Frontier site reachable. GoWild fares must be confirmed logged-in (site/app) - use the checklist links.'
-      : 'Could not reach Frontier from here (offline/blocked). Using seed route map; use the checklist links from your own device.',
+      : blocked
+        ? 'Frontier refused the probe (bot protection or proxy) - open the checklist links in your own browser instead.'
+        : 'Could not reach Frontier from here (offline/blocked). Using seed route map; use the checklist links from your own device.',
   });
 }
