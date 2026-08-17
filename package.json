@@ -1,0 +1,22 @@
+{
+  "name": "gowild-trip-agent",
+  "version": "1.0.0",
+  "description": "Personal travel agent for a Frontier GoWild pass trip: RIC/ORF -> LAS -> SFO -> back east, with cash/miles backups and mixed flight/train/bus return planning.",
+  "type": "module",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "agent": "node src/cli.js",
+    "status": "node src/cli.js status",
+    "sync": "node src/cli.js sync",
+    "outbound": "node src/cli.js outbound",
+    "hop": "node src/cli.js hop",
+    "return": "node src/cli.js return",
+    "backup": "node src/cli.js backup",
+    "dashboard": "node src/cli.js dashboard",
+    "test": "node --test test/"
+  },
+  "license": "Apache-2.0",
+  "private": true
+}

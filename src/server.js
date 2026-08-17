@@ -1,0 +1,65 @@
+// Local web dashboard. Sync-on-request only: the page never auto-polls; every
+// section has a Refresh button that triggers a targeted sync.
+import { createServer } from 'node:http';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { ROOT, loadJSON, todayISO, addDaysISO } from './util.js';
+import { gowildOptions } from './providers/frontier.js';
+import { backupCashOptions } from './providers/flights.js';
+import { awardOptions } from './providers/awards.js';
+import { liveStatus } from './providers/amtrak.js';
+import { planReturn } from './planner.js';
+import { syncAll, syncStatus } from './sync.js';
+
+const config = loadJSON('trip.config.json');
+
+function json(res, code, obj) {
+  res.writeHead(code, { 'content-type': 'application/json' });
+  res.end(JSON.stringify(obj));
+}
+
+export function startServer(port = 8787) {
+  const server = createServer(async (req, res) => {
+    const url = new URL(req.url, `http://localhost:${port}`);
+    const q = url.searchParams;
+    const date = q.get('date') || addDaysISO(todayISO(), 1);
+    try {
+      if (url.pathname === '/' || url.pathname === '/index.html') {
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+        res.end(readFileSync(path.join(ROOT, 'public', 'dashboard.html')));
+      } else if (url.pathname === '/api/status') {
+        json(res, 200, { config, sections: syncStatus(), amtrakLive: liveStatus(), today: todayISO() });
+      } else if (url.pathname === '/api/sync' && req.method === 'POST') {
+        const sections = q.get('section') ? q.get('section').split(',') : undefined;
+        json(res, 200, await syncAll({ sections, date: q.get('date') || undefined }));
+      } else if (url.pathname === '/api/outbound') {
+        const from = q.get('from')
+          ? [q.get('from').toUpperCase()]
+          : [config.traveler.homeAirports.preferred, config.traveler.homeAirports.backup];
+        json(res, 200, gowildOptions(from, ['LAS'], date));
+      } else if (url.pathname === '/api/hop') {
+        json(res, 200, gowildOptions(['LAS'], ['SFO', 'OAK', 'SJC'], date));
+      } else if (url.pathname === '/api/return') {
+        json(res, 200, planReturn({
+          from: (q.get('from') || 'SFO').toUpperCase(),
+          date,
+          sort: q.get('sort') === 'cost' ? 'cost' : 'time',
+          to: q.get('to')?.toUpperCase() || null,
+          maxResults: q.get('max') ? +q.get('max') : undefined,
+        }));
+      } else if (url.pathname === '/api/backup') {
+        const from = (q.get('from') || 'LAS').toUpperCase();
+        json(res, 200, { cash: backupCashOptions(from, date), awards: awardOptions(from) });
+      } else {
+        json(res, 404, { error: 'not found' });
+      }
+    } catch (err) {
+      json(res, 500, { error: err.message });
+    }
+  });
+  server.listen(port, () => {
+    console.log(`GoWild Trip Agent dashboard: http://localhost:${port}`);
+    console.log('Data refreshes only when you click Refresh (or run `sync`).');
+  });
+  return server;
+}

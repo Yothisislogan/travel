@@ -1,0 +1,25 @@
+{
+  "traveler": {
+    "homeAirports": {
+      "preferred": "RIC",
+      "backup": "ORF"
+    },
+    "eastCoastAcceptable": ["RIC", "ORF", "DCA", "IAD", "BWI", "RDU", "PHF"]
+  },
+  "trip": {
+    "legs": [
+      { "name": "Outbound", "from": ["RIC", "ORF"], "to": ["LAS"], "mode": "gowild" },
+      { "name": "Vegas to Bay Area", "from": ["LAS"], "to": ["SFO", "OAK", "SJC"], "mode": "gowild" },
+      { "name": "Return east", "from": ["SFO", "OAK", "SJC", "LAS"], "to": ["RIC", "ORF"], "mode": "any" }
+    ]
+  },
+  "return": {
+    "sort": ["time", "cost"],
+    "maxLegs": 5,
+    "maxResults": 12,
+    "allowModes": ["gowild", "flight", "award", "train", "bus", "transit"]
+  },
+  "sync": {
+    "staleAfterHours": 6
+  }
+}

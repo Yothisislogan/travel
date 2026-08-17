@@ -1,0 +1,24 @@
+{
+  "_comment": "Long-haul ground legs (seed estimates; refresh with `sync`). hours = scheduled travel time. costUSD = typical coach fare booked 0-7 days out. daysPerWeek 7 = daily.",
+  "trainLegs": [
+    { "id": "zephyr", "operator": "Amtrak California Zephyr", "from": "EMY", "to": "CHI", "hours": 52, "costUSD": { "min": 140, "max": 260 }, "daysPerWeek": 7, "notes": "Departs Emeryville morning, 2 nights to Chicago.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
+    { "id": "coast-starlight", "operator": "Amtrak Coast Starlight", "from": "EMY", "to": "LAUS", "hours": 12.5, "costUSD": { "min": 55, "max": 120 }, "daysPerWeek": 7, "notes": "Bay Area to LA Union Station.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
+    { "id": "sw-chief", "operator": "Amtrak Southwest Chief", "from": "LAUS", "to": "CHI", "hours": 43, "costUSD": { "min": 120, "max": 230 }, "daysPerWeek": 7, "notes": "LA to Chicago via Albuquerque/Kansas City.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
+    { "id": "chi-was", "operator": "Amtrak (Chicago-Washington)", "from": "CHI", "to": "WAS", "hours": 18, "costUSD": { "min": 90, "max": 190 }, "daysPerWeek": 7, "notes": "SEED: verify 2026 service (Capitol Limited/Floridian changes).", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
+    { "id": "cardinal", "operator": "Amtrak Cardinal", "from": "CHI", "to": "CVS", "hours": 22, "costUSD": { "min": 85, "max": 160 }, "daysPerWeek": 3, "notes": "3x weekly, via WV; Charlottesville VA stop.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
+    { "id": "cvs-was", "operator": "Amtrak (Charlottesville-DC)", "from": "CVS", "to": "WAS", "hours": 2.7, "costUSD": { "min": 20, "max": 45 }, "daysPerWeek": 7, "notes": "Cardinal continues to WAS; also Regional/Crescent.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
+    { "id": "was-rvr", "operator": "Amtrak Northeast Regional", "from": "WAS", "to": "RVR", "hours": 2.4, "costUSD": { "min": 25, "max": 65 }, "daysPerWeek": 7, "notes": "Several departures daily.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
+    { "id": "was-nfk", "operator": "Amtrak Northeast Regional", "from": "WAS", "to": "NFK", "hours": 5.9, "costUSD": { "min": 40, "max": 85 }, "daysPerWeek": 7, "notes": "2-3 departures daily to Norfolk.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
+    { "id": "rvr-nfk", "operator": "Amtrak Northeast Regional", "from": "RVR", "to": "NFK", "hours": 2.9, "costUSD": { "min": 18, "max": 40 }, "daysPerWeek": 7, "notes": "Richmond to Norfolk.", "bookLink": "https://www.amtrak.com/tickets/departure.html" }
+  ],
+  "busLegs": [
+    { "id": "las-la", "operator": "FlixBus/Greyhound", "from": "LAS_BUS", "to": "LA_BUS", "hours": 5.5, "costUSD": { "min": 25, "max": 55 }, "daysPerWeek": 7, "notes": "Frequent daily departures.", "bookLink": "https://www.flixbus.com" },
+    { "id": "las-den", "operator": "Greyhound", "from": "LAS_BUS", "to": "DEN_BUS", "hours": 15, "costUSD": { "min": 80, "max": 150 }, "daysPerWeek": 7, "notes": "SEED: verify schedule.", "bookLink": "https://www.flixbus.com" },
+    { "id": "den-chi", "operator": "Greyhound/FlixBus", "from": "DEN_BUS", "to": "CHI_BUS", "hours": 19, "costUSD": { "min": 90, "max": 170 }, "daysPerWeek": 7, "notes": "SEED: verify schedule.", "bookLink": "https://www.flixbus.com" },
+    { "id": "sf-chi-bus", "operator": "Greyhound/FlixBus (transfers)", "from": "SF_BUS", "to": "CHI_BUS", "hours": 50, "costUSD": { "min": 150, "max": 260 }, "daysPerWeek": 7, "notes": "SEED: multi-transfer, typically via Sacramento/Salt Lake/Denver.", "bookLink": "https://www.flixbus.com" },
+    { "id": "chi-dc-bus", "operator": "FlixBus/Greyhound", "from": "CHI_BUS", "to": "DC_BUS", "hours": 14.5, "costUSD": { "min": 60, "max": 120 }, "daysPerWeek": 7, "notes": "Overnight options via Pittsburgh.", "bookLink": "https://www.flixbus.com" },
+    { "id": "dc-ric-bus", "operator": "FlixBus/Greyhound", "from": "DC_BUS", "to": "RIC_BUS", "hours": 2.5, "costUSD": { "min": 15, "max": 35 }, "daysPerWeek": 7, "notes": "Several daily.", "bookLink": "https://www.flixbus.com" },
+    { "id": "dc-nfk-bus", "operator": "FlixBus/Greyhound", "from": "DC_BUS", "to": "NFK_BUS", "hours": 4.5, "costUSD": { "min": 25, "max": 50 }, "daysPerWeek": 7, "notes": "Limited daily departures.", "bookLink": "https://www.flixbus.com" },
+    { "id": "las-east-bus", "operator": "Greyhound/FlixBus (transfers)", "from": "LAS_BUS", "to": "DC_BUS", "hours": 58, "costUSD": { "min": 180, "max": 330 }, "daysPerWeek": 7, "notes": "SEED: cross-country with 2-4 transfers.", "bookLink": "https://www.flixbus.com" }
+  ]
+}

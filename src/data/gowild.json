@@ -1,0 +1,21 @@
+{
+  "_comment": "GoWild! pass rules. SEED values - run `sync` and see README for verification. Blackout dates change every program year.",
+  "asOf": "seed-2026-08",
+  "bookingWindow": {
+    "domesticOpensDayBefore": true,
+    "domesticNote": "Domestic GoWild fares become bookable the day before departure (Eastern time).",
+    "internationalDaysBefore": 10
+  },
+  "typicalCostPerSegmentUSD": { "min": 6, "max": 40, "notes": "You pay taxes/fees only (base fare $0.01). Connections cost more (per-segment fees)." },
+  "blackoutDates": [
+    { "range": "2026-11-25/2026-11-30", "label": "Thanksgiving (VERIFY)" },
+    { "range": "2026-12-18/2027-01-04", "label": "Winter holidays (VERIFY)" }
+  ],
+  "connectionRules": "GoWild bookings may include Frontier connections on one itinerary; availability is per-flight and capacity controlled.",
+  "feesNotes": "Bags and seat assignments are NOT included - pay at booking or bring a free personal item only.",
+  "searchLinks": {
+    "site": "https://www.flyfrontier.com/",
+    "flightSearch": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true&promo=",
+    "notes": "Log in to flyfrontier.com with the GoWild pass on your account, then search; GoWild fares appear as a fare option when available for eligible flights."
+  }
+}

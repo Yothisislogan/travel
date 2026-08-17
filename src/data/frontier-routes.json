@@ -1,0 +1,24 @@
+{
+  "_comment": "Frontier nonstop route map relevant to this trip. SEED - Frontier changes routes seasonally; run `sync` and verify before relying on a connection.",
+  "asOf": "seed-2026-08",
+  "freshnessWarning": "Frontier adds/drops routes monthly. Treat this as a starting point and confirm in the Frontier app before travel day.",
+  "routes": {
+    "RIC": [],
+    "ORF": [],
+    "LAS": ["DEN", "SFO", "ONT", "PHX", "SLC", "DFW", "ATL", "MCO", "PHL", "CVG", "CLE", "ORD"],
+    "SFO": ["LAS", "DEN"],
+    "OAK": [],
+    "SJC": [],
+    "DEN": ["RIC", "ORF", "LAS", "SFO", "ATL", "MCO", "PHL", "DCA", "BWI", "RDU", "CLT"],
+    "MCO": ["RIC", "ORF", "LAS", "PHL", "ATL"],
+    "ATL": ["LAS", "DEN", "MCO", "PHL"],
+    "PHL": ["LAS", "DEN", "MCO", "ATL"],
+    "CLE": ["LAS", "DEN", "MCO"],
+    "CVG": ["LAS", "DEN", "MCO"],
+    "ORD": ["LAS", "DEN", "MCO"],
+    "DFW": ["LAS", "DEN"],
+    "PHX": ["LAS", "DEN"],
+    "SLC": ["LAS", "DEN"],
+    "ONT": ["LAS", "DEN"]
+  }
+}

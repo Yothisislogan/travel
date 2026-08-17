@@ -1,0 +1,28 @@
+{
+  "_comment": "Live data endpoints the sync engine tries, in order. Edit freely - endpoints for unofficial APIs change. {origin} {dest} {date} placeholders are substituted. If everything fails, the agent falls back to seed data + deep links.",
+  "frontier": {
+    "attempts": [
+      {
+        "name": "flyfrontier-flight-search-page",
+        "url": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true",
+        "kind": "html-probe",
+        "notes": "Bot-protected (PerimeterX); a 200 here only proves reachability. Real GoWild availability requires the site/app while logged in."
+      }
+    ],
+    "deepLink": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true"
+  },
+  "amtraker": {
+    "trains": "https://api-v3.amtraker.com/v3/trains",
+    "notes": "Free, no key. Live positions/status of all Amtrak trains (no fares)."
+  },
+  "flixbus": {
+    "attempts": [],
+    "deepLink": "https://shop.flixbus.com/search?departureCity={fromCity}&arrivalCity={toCity}&rideDate={date}"
+  },
+  "deepLinks": {
+    "googleFlights": "https://www.google.com/travel/flights?q=Flights%20from%20{origin}%20to%20{dest}%20on%20{date}%20one%20way",
+    "kayak": "https://www.kayak.com/flights/{origin}-{dest}/{date}?sort=bestflight_a",
+    "amtrak": "https://www.amtrak.com/home.html",
+    "greyhound": "https://www.greyhound.com"
+  }
+}

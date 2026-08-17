@@ -1,0 +1,29 @@
+{
+  "_comment": "Backup (non-Frontier) markets for getting un-stuck on the west coast. SEED estimates for last-minute (0-3 days out) one-way economy; live prices via Amadeus when keys configured.",
+  "asOf": "seed-2026-08",
+  "closeInFees": "Most major US programs dropped close-in award booking fees; award prices are dynamic and spike last-minute.",
+  "positioningTips": [
+    "Flying into DCA/BWI/IAD is often much cheaper than RIC/ORF nonstop; finish with Amtrak Northeast Regional or bus to Richmond/Norfolk.",
+    "Check RDU too - sometimes cheaper than RIC and a 2.5h bus/drive from Richmond."
+  ],
+  "markets": {
+    "LAS-RIC": { "airlines": ["American (via CLT/DFW)", "United (via IAD/ORD)", "Delta (via ATL)", "Spirit (via various)", "Breeze (seasonal nonstop - verify)"], "nonstop": false, "typicalCashUSD": { "min": 150, "max": 450 }, "typicalMiles": { "American AAdvantage": 12500, "United MileagePlus": 15000, "Delta SkyMiles": 18000 } },
+    "LAS-ORF": { "airlines": ["American (via CLT)", "United (via IAD/ORD)", "Delta (via ATL)", "Southwest (via various)"], "nonstop": false, "typicalCashUSD": { "min": 160, "max": 480 }, "typicalMiles": { "American AAdvantage": 12500, "United MileagePlus": 15000, "Delta SkyMiles": 18000 } },
+    "LAS-DCA": { "airlines": ["American (nonstop)", "United (nonstop - verify)", "Alaska", "Delta (via ATL)"], "nonstop": true, "typicalCashUSD": { "min": 120, "max": 400 }, "typicalMiles": { "American AAdvantage": 12500, "United MileagePlus": 14000 } },
+    "LAS-IAD": { "airlines": ["United (nonstop)"], "nonstop": true, "typicalCashUSD": { "min": 120, "max": 380 }, "typicalMiles": { "United MileagePlus": 14000 } },
+    "LAS-BWI": { "airlines": ["Southwest (nonstop)", "Spirit (nonstop)"], "nonstop": true, "typicalCashUSD": { "min": 90, "max": 350 }, "typicalMiles": { "Southwest Rapid Rewards": 12000 } },
+    "LAS-RDU": { "airlines": ["Spirit (nonstop - verify)", "American (via CLT)"], "nonstop": false, "typicalCashUSD": { "min": 110, "max": 380 }, "typicalMiles": { "American AAdvantage": 12500 } },
+    "SFO-RIC": { "airlines": ["United (via IAD/ORD/DEN)", "American (via CLT/DFW)", "Delta (via ATL)"], "nonstop": false, "typicalCashUSD": { "min": 180, "max": 500 }, "typicalMiles": { "United MileagePlus": 16000, "American AAdvantage": 12500, "Delta SkyMiles": 20000 } },
+    "SFO-ORF": { "airlines": ["United (via IAD/ORD)", "American (via CLT/DFW)", "Delta (via ATL)"], "nonstop": false, "typicalCashUSD": { "min": 190, "max": 520 }, "typicalMiles": { "United MileagePlus": 16000, "American AAdvantage": 12500 } },
+    "SFO-IAD": { "airlines": ["United (nonstop)"], "nonstop": true, "typicalCashUSD": { "min": 140, "max": 450 }, "typicalMiles": { "United MileagePlus": 15000 } },
+    "SFO-DCA": { "airlines": ["Alaska (nonstop - verify)", "United (via hub)"], "nonstop": true, "typicalCashUSD": { "min": 150, "max": 460 }, "typicalMiles": { "Alaska Mileage Plan": 12500 } },
+    "SFO-BWI": { "airlines": ["Southwest (via MDW/DEN)", "Spirit (via LAS)"], "nonstop": false, "typicalCashUSD": { "min": 120, "max": 400 }, "typicalMiles": { "Southwest Rapid Rewards": 14000 } }
+  },
+  "milesPrograms": {
+    "American AAdvantage": { "searchLink": "https://www.aa.com/booking/find-flights", "notes": "Web specials often cheapest for transcon one-ways." },
+    "United MileagePlus": { "searchLink": "https://www.united.com/en/us/book-flight/united-award-travel", "notes": "Dynamic pricing; check IAD nonstops from LAS/SFO." },
+    "Delta SkyMiles": { "searchLink": "https://www.delta.com/flightsearch/book-a-flight", "notes": "Usually priciest domestic awards; check flash deals." },
+    "Southwest Rapid Rewards": { "searchLink": "https://www.southwest.com/air/booking/", "notes": "Points track cash price; BWI is the useful east coast target." },
+    "Alaska Mileage Plan": { "searchLink": "https://www.alaskaair.com/planbook", "notes": "Can book American flights with miles - useful for LAS/SFO to CLT/DCA." }
+  }
+}
