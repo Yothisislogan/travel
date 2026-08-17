@@ -41,7 +41,8 @@ function printGowildBlock(title, opts) {
   }
   for (const p of opts.paths) {
     const routeStr = p.via ? `${p.from} -> ${p.via} -> ${p.to}` : `${p.from} -> ${p.to} (nonstop)`;
-    console.log(`  ${routeStr.padEnd(28)} ~${fmtHours(p.totalHours).padEnd(7)} est ${fmtMoney(p.estCostUSD)} in taxes/fees`);
+    const freq = p.daysPerWeek && p.daysPerWeek < 7 ? `  [${p.frequencyNote}]` : '';
+    console.log(`  ${routeStr.padEnd(28)} ~${fmtHours(p.totalHours).padEnd(7)} est ${fmtMoney(p.estCostUSD)} in taxes/fees${freq}`);
     console.log(dim(`    check: ${p.searchLink}`));
   }
   console.log(dim(`  Route map: ${opts.freshness}. ${opts.warning}`));

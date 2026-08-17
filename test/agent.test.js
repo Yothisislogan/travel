@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { haversineMiles, estimateFlightHours, fmtHours, fmtMoney, addCosts, costMidpoint, addDaysISO } from '../src/util.js';
-import { findGowildPaths, bookingWindow, isBlackout, gowildOptions } from '../src/providers/frontier.js';
+import { findGowildPaths, bookingWindow, isBlackout, gowildOptions, frontierDate } from '../src/providers/frontier.js';
 import { planReturn, transferBuffer, buildEdges } from '../src/planner.js';
 import { backupCashOptions } from '../src/providers/flights.js';
 import { awardOptions } from '../src/providers/awards.js';
@@ -37,7 +37,8 @@ test('booking window: day-before rule', () => {
 });
 
 test('blackout detection reads ranges', () => {
-  assert.ok(isBlackout('2026-11-26'), 'Thanksgiving inside seed blackout');
+  assert.ok(isBlackout('2026-11-24'), 'Thanksgiving inside blackout list');
+  assert.ok(isBlackout('2026-12-20'), 'winter holidays inside blackout list');
   assert.equal(isBlackout('2026-10-01'), null);
 });
 
@@ -67,8 +68,22 @@ test('gowildOptions decorates with window + links', () => {
   const d = addDaysISO(today, 1);
   const o = gowildOptions(['LAS'], ['SFO'], d);
   assert.equal(o.window.canBookNow, true);
-  assert.ok(o.paths[0].searchLink.includes('LAS'));
-  assert.ok(o.paths[0].searchLink.includes(d));
+  assert.ok(o.paths[0].searchLink.includes('o1=LAS'));
+  // Frontier links carry 'Aug 18, 2026'-style dates, URL-encoded.
+  assert.ok(o.paths[0].searchLink.includes(encodeURIComponent(frontierDate(d))));
+});
+
+test('frontierDate formats for the booking site', () => {
+  assert.equal(frontierDate('2026-08-18'), 'Aug 18, 2026');
+  assert.equal(frontierDate('2026-12-05'), 'Dec 5, 2026');
+});
+
+test('outbound RIC/ORF -> LAS paths exist via researched connections', () => {
+  const paths = findGowildPaths(['RIC', 'ORF'], ['LAS']);
+  assert.ok(paths.some((p) => p.from === 'RIC' && p.via === 'DEN'), 'RIC via DEN');
+  assert.ok(paths.some((p) => p.from === 'ORF' && (p.via === 'ATL' || p.via === 'MCO')), 'ORF via ATL/MCO');
+  const ricDen = paths.find((p) => p.from === 'RIC' && p.via === 'DEN');
+  assert.equal(ricDen.daysPerWeek, 2, 'RIC-DEN runs 2x weekly - path limited to those days');
 });
 
 test('transfer buffers', () => {

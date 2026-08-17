@@ -109,6 +109,7 @@ function gowildHTML(d) {
   for (const p of d.paths) {
     h += '<div class="row">' + tag('gowild') + '<b>' + esc(p.from) + (p.via ? ' &rarr; ' + esc(p.via) : '') + ' &rarr; ' + esc(p.to) + '</b>'
       + (p.via ? '' : ' <span class="tag">nonstop</span>')
+      + (p.daysPerWeek && p.daysPerWeek < 7 ? ' <span class="tag" style="color:var(--warn)">' + esc(p.frequencyNote || 'not daily') + '</span>' : '')
       + ' <span class="dim">~' + hrs(p.totalHours) + ' &middot; est ' + money(p.estCostUSD) + ' taxes/fees</span>'
       + ' &middot; <a target="_blank" href="' + esc(p.searchLink) + '">check fares &nearr;</a></div>';
   }

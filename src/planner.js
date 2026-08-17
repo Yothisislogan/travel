@@ -3,7 +3,7 @@
 // itineraries from the west coast back to Richmond/Norfolk, sorted by total
 // travel time then cost (or cost then time).
 import { loadJSON, readSnapshot, haversineMiles, estimateFlightHours, costMidpoint, addCosts } from './util.js';
-import { routeMap, gowildRules, searchLink } from './providers/frontier.js';
+import { routeMap, gowildRules, searchLink, frequencyOf } from './providers/frontier.js';
 import { deepLinks } from './providers/flights.js';
 import { busLink } from './providers/bus.js';
 
@@ -52,13 +52,15 @@ export function buildEdges({ date, allowModes }) {
           const key = `${a}>${b}`;
           if (seen.has(key) || !place(a) || !place(b)) continue;
           seen.add(key);
+          const freq = frequencyOf(a, b);
           edges.push({
             mode: 'gowild',
             from: a,
             to: b,
-            operator: 'Frontier (GoWild pass)',
+            operator: freq?.days ? `Frontier GoWild (${freq.days})` : 'Frontier (GoWild pass)',
             hours: flightHours(a, b),
             costUSD: { min: seg.min, max: seg.max },
+            daysPerWeek: freq?.daysPerWeek,
             dataStatus: 'estimate',
             bookLink: searchLink(a, b, date),
             notes: 'Bookable day before departure; availability capacity-controlled.',
@@ -93,12 +95,15 @@ export function buildEdges({ date, allowModes }) {
       if (!m.typicalMiles) continue;
       const [from, to] = key.split('-');
       const [program, miles] = Object.entries(m.typicalMiles).sort((x, y) => x[1] - y[1])[0];
+      // The program's airline may not operate the market's nonstop (e.g. Atmos
+      // can't book Breeze) - only credit nonstop timing when it can.
+      const awardNonstop = m.nonstopPrograms?.includes(program) ?? false;
       edges.push({
         mode: 'award',
         from,
         to,
         operator: `${program}`,
-        hours: +((flightHours(from, to) ?? 5) + (m.nonstop ? 0 : 2.5)).toFixed(2),
+        hours: +((flightHours(from, to) ?? 5) + (awardNonstop ? 0 : 2.5)).toFixed(2),
         costUSD: { min: 6, max: 15 },
         miles,
         dataStatus: 'estimate',

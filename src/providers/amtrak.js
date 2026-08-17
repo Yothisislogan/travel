@@ -10,7 +10,7 @@ const RELEVANT = [
   { match: /zephyr/i, id: 'zephyr' },
   { match: /southwest chief/i, id: 'sw-chief' },
   { match: /cardinal/i, id: 'cardinal' },
-  { match: /capitol limited|floridian/i, id: 'chi-was' },
+  { match: /capitol limited|floridian/i, id: 'floridian' },
   { match: /coast starlight/i, id: 'coast-starlight' },
   { match: /northeast regional/i, id: 'regional' },
 ];

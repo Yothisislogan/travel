@@ -23,12 +23,39 @@ export function routeMap() {
   return snap?.data?.routes ? { ...seedRoutes, ...snap.data } : seedRoutes;
 }
 
+// Nonstops run both directions, but the data file lists each city's relevant
+// destinations only once - symmetrize into a full adjacency map.
+export function adjacency() {
+  const adj = {};
+  const add = (a, b) => {
+    (adj[a] ??= new Set()).add(b);
+    (adj[b] ??= new Set()).add(a);
+  };
+  for (const [from, dests] of Object.entries(routeMap().routes)) {
+    for (const to of dests) add(from, to);
+  }
+  return Object.fromEntries(Object.entries(adj).map(([k, v]) => [k, [...v]]));
+}
+
 export function fill(template, params) {
   return template.replace(/\{(\w+)\}/g, (_, k) => encodeURIComponent(params[k] ?? ''));
 }
 
+// Frontier's booking URL wants 'Aug 18, 2026'-style dates, not ISO.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export function frontierDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return `${MONTHS[m - 1]} ${d}, ${y}`;
+}
+
 export function searchLink(origin, dest, date) {
-  return fill(sources.frontier.deepLink, { origin, dest, date });
+  return fill(sources.frontier.deepLink, { origin, dest, date: frontierDate(date) });
+}
+
+// Days-per-week info for a nonstop, if known (checked in both directions).
+export function frequencyOf(from, to) {
+  const f = routeMap().frequencies ?? seedRoutes.frequencies ?? {};
+  return f[`${from}-${to}`] ?? f[`${to}-${from}`] ?? null;
 }
 
 // Is `date` (ISO) bookable under GoWild right now? Domestic: opens the day
@@ -70,7 +97,7 @@ function flightLeg(from, to) {
 
 // Nonstop + one-stop Frontier paths between airport sets, from the route map.
 export function findGowildPaths(fromList, toList, { maxConnections = 1 } = {}) {
-  const { routes } = routeMap();
+  const routes = adjacency();
   const paths = [];
   for (const from of fromList) {
     const direct = routes[from] ?? [];
@@ -97,6 +124,12 @@ export function findGowildPaths(fromList, toList, { maxConnections = 1 } = {}) {
     p.totalHours = +(flying + (p.via ? 1.25 : 0)).toFixed(2);
     const seg = rules.typicalCostPerSegmentUSD;
     p.estCostUSD = { min: seg.min * p.segments.length, max: seg.max * p.segments.length };
+    // Frequency: a path only works on days every segment operates.
+    const freqs = p.segments.map((s) => frequencyOf(s.from, s.to)).filter(Boolean);
+    if (freqs.length) {
+      p.daysPerWeek = Math.min(...freqs.map((f) => f.daysPerWeek ?? 7));
+      p.frequencyNote = freqs.map((f) => `${f.days}${f.note ? ` (${f.note})` : ''}`).join('; ');
+    }
   }
   paths.sort((x, y) => x.totalHours - y.totalHours);
   return paths;
@@ -125,7 +158,7 @@ export async function sync({ date } = {}) {
   ];
   const probes = [];
   for (const attempt of sources.frontier.attempts ?? []) {
-    const url = fill(attempt.url, { origin: 'RIC', dest: 'LAS', date: checkDate });
+    const url = fill(attempt.url, { origin: 'RIC', dest: 'LAS', date: frontierDate(checkDate) });
     const res = await fetchJSON(url, { timeoutMs: 12000 });
     probes.push({ name: attempt.name, url, reachable: res.status > 0, httpStatus: res.status, notes: attempt.notes });
   }
