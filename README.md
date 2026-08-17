@@ -4,6 +4,8 @@ A personal travel agent for one specific mission: fly **RIC (preferred) or ORF (
 
 Zero dependencies - Node.js 18+ is all you need. Nothing polls in the background: **data syncs only when you ask** (a CLI command or a dashboard Refresh button).
 
+**Start with [TRIP-PLAYBOOK.md](TRIP-PLAYBOOK.md)** - the researched strategy for this exact trip: which connections exist, the days they run, the LAS→IAD trick home, and the stuck-out-west decision tree.
+
 ## Quick start
 
 ```bash
