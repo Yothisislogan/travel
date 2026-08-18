@@ -62,13 +62,20 @@
 
   <section id="secAmtrak"><h2>Amtrak live <button id="amtrakBtn" class="ghost">↻</button></h2><div id="amtrakBody" class="empty">from last sync&hellip;</div></section>
 
-  <section id="secBookmarklet">
-    <h2>GoWild seat-check bookmarklet</h2>
-    <p class="dim">Live GoWild seat counts can't be fetched by a web page (browser cross-origin rules), but a bookmarklet runs <i>on Frontier's own page</i> where the data lives.</p>
-    <p><b>Desktop:</b> drag the green button to your bookmarks bar. <b>Phone:</b> tap it to copy, then make a new bookmark and paste it as the <i>URL</i> (not the name).</p>
-    <p><a class="bookmarklet" id="bmLink" href="#" draggable="true">🎯 GoWild seats</a> <button id="bmCopy" class="ghost">Copy code</button></p>
-    <p class="dim">Then open any prefilled &ldquo;check fares&rdquo; link above and, on Frontier's results page, tap the bookmark — it overlays every flight's GoWild fare and seats remaining.</p>
-    <p class="dim">Why not a button here? A web page can't read Frontier's data across origins (browser security) — the bookmarklet runs <i>on</i> Frontier's page to get around that. <b>On a computer</b>, the local dashboard (<code>node src/cli.js dashboard</code>) has a real <b>↻ live seats</b> button that fetches Frontier for you — no bookmarklet needed.</p>
+  <section id="secSeats">
+    <h2>Live GoWild seats — what works</h2>
+    <p class="dim">Frontier shows GoWild fares only to a logged-in pass holder, and blocks datacenter servers — so no website (including this one) can fetch them for you. These three do work, most reliable first:</p>
+    <ol style="margin:8px 0 4px; padding-left:20px; line-height:1.7">
+      <li><b>Tap any &ldquo;check fares ↗&rdquo; link above.</b> It opens Frontier prefilled for that route and date, already signed in — GoWild fares show right there. Works on any phone, nothing to install.</li>
+      <li><b>Publish from your computer:</b> run <code>node src/cli.js publish</code> at home. It fetches Frontier from <i>your</i> connection (which isn't blocked) and pushes the result here, so this page shows real fares and seat counts.</li>
+      <li><b>Same Wi-Fi as your computer?</b> Run <code>node src/cli.js dashboard</code> — it prints a phone address like <code>http://192.168.x.x:8787</code>. That dashboard has a real <b>↻ live seats</b> button.</li>
+    </ol>
+    <p class="dim">Community trackers poll every route and are handy when you want to browse rather than check one flight: <span id="trackerLinks"></span></p>
+    <details style="margin-top:8px">
+      <summary class="dim" style="cursor:pointer">Optional: bookmarklet (Chrome only — Safari and Firefox block it)</summary>
+      <p class="dim" style="margin-top:6px">Runs on Frontier's own page and overlays every flight's fare and seats remaining. <b>Desktop Chrome:</b> drag the button to your bookmarks bar. <b>Phone:</b> tap to copy, make a new bookmark, paste it as the <i>URL</i>. Then open a Frontier results page and tap the bookmark.</p>
+      <p><a class="bookmarklet" id="bmLink" href="#" draggable="true">🎯 GoWild seats</a> <button id="bmCopy" class="ghost">Copy code</button></p>
+    </details>
   </section>
 </main>
 
@@ -233,6 +240,11 @@ function render() {
     $('backupBody').innerHTML = bh || '<div class="empty">No backup data — run Sync.</div>';
 
     $('hotelsBody').innerHTML = hotelsHTML(DATA.hotels?.[$('hoCity').value]);
+
+    const trackers = DATA.outbound?.[$('obDate').value]?.trackers ?? [];
+    $('trackerLinks').innerHTML = trackers.length
+      ? trackers.map((x) => '<a target="_blank" rel="noopener" href="' + esc(x.url) + '">' + esc(x.name) + ' ↗</a>').join(' · ')
+      : '<a target="_blank" rel="noopener" href="https://www.gowilder.net/">GoWilder ↗</a> · <a target="_blank" rel="noopener" href="https://www.wildfares.com/">WildFares ↗</a>';
 
     renderAmtrak(DATA.amtrakLive ?? []);
   } catch (err) {

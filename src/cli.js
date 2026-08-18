@@ -189,6 +189,23 @@ async function main() {
       break;
     }
 
+    case 'publish': {
+      const { publish } = await import('./publish.js');
+      console.log('Syncing from this machine, then publishing to the phone dashboard...');
+      const r = await publish({ date: flags.date, push: flags.push !== 'false', sections: flags.section?.split(',') });
+      for (const [name, s] of Object.entries(r.results)) {
+        console.log(`  ${(SECTIONS[name]?.label ?? name).padEnd(28)} [${s.status}]`);
+      }
+      console.log(r.live.length ? B(`\nCaptured LIVE: ${r.live.join(', ')}`) : '\nNothing came back live - nothing useful to publish.');
+      if (r.pushed) {
+        console.log(`Pushed ${r.path} to ${r.branch}. The phone dashboard picks it up on its next build (~1-2 min).`);
+        console.log(dim('Tip: press Sync on the dashboard, or just wait for the push-triggered deploy.'));
+      } else {
+        console.log(dim(`Not pushed${r.reason ? ` (${r.reason})` : ''}. Wrote ${r.path}.`));
+      }
+      break;
+    }
+
     case 'dashboard': {
       const { startServer } = await import('./server.js');
       startServer(+(process.env.PORT || 8787));
@@ -217,7 +234,11 @@ Usage: node src/cli.js <command> [flags]
   backup [--from LAS]        Stuck-out-west plan: cash + miles options
   hotels [--city vegas|sf]   Vegas (MGM Rewards + Caesars Rewards) / SF (Priceline Express)
   rules                      Show GoWild rules data
-  dashboard                  Web dashboard on http://localhost:8787
+  publish                    Sync here, then push the live result so your PHONE
+                             dashboard shows real GoWild seats (Frontier blocks
+                             GitHub's servers, not your home connection)
+  dashboard                  Web dashboard, reachable from your phone on the
+                             same Wi-Fi (prints the LAN address on startup)
 
 Dates default to tomorrow (the first GoWild-bookable day).`);
     }

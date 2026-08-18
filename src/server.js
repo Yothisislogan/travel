@@ -2,6 +2,7 @@
 // section has a Refresh button that triggers a targeted sync.
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
+import { networkInterfaces } from 'node:os';
 import path from 'node:path';
 import { ROOT, loadJSON, todayISO, addDaysISO } from './util.js';
 import { gowildOptions, checkGowildAvailability } from './providers/frontier.js';
@@ -73,9 +74,25 @@ export function startServer(port = 8787) {
       json(res, 500, { error: err.message });
     }
   });
-  server.listen(port, () => {
-    console.log(`GoWild Trip Agent dashboard: http://localhost:${port}`);
-    console.log('Data refreshes only when you click Refresh (or run `sync`).');
+  // Bind all interfaces so a phone on the same Wi-Fi can use this dashboard -
+  // that is the only way the real "live seats" button (which fetches Frontier
+  // server-side, from your own IP) is usable from a phone.
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`\nGoWild Trip Agent dashboard`);
+    console.log(`  This computer:  http://localhost:${port}`);
+    for (const url of lanURLs(port)) console.log(`  Phone/tablet:   ${url}   <- same Wi-Fi, gives you the live-seats button`);
+    console.log('\nData refreshes only when you click Refresh (or run `sync`).');
   });
   return server;
+}
+
+// Every non-internal IPv4 address this machine has, as dashboard URLs.
+export function lanURLs(port) {
+  const out = [];
+  for (const addrs of Object.values(networkInterfaces())) {
+    for (const a of addrs ?? []) {
+      if (a.family === 'IPv4' && !a.internal) out.push(`http://${a.address}:${port}`);
+    }
+  }
+  return out;
 }

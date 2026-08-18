@@ -83,7 +83,12 @@ For mid-trip use with no computer and no server, the repo also ships a **static 
 
 1. **Enable Pages once**: repo Settings → Pages → Source: **GitHub Actions**. The `pages` workflow **builds `site/data.json` fresh, then deploys `site/`**, giving you a URL that works on your phone.
 2. **Sync on request** = rebuild + redeploy. The dashboard's **Sync** button (or Actions → *pages* → *Run workflow*) triggers `pages` as a `workflow_dispatch`, which runs a full live provider sync using your repo **Secrets** (put SERPAPI_KEY etc. in Settings → Secrets → Actions), regenerates `data.json`, and redeploys. Ordinary code pushes rebuild with **seed data only** (no paid API calls), so routine pushes never burn your SerpAPI quota. `data.json` is **generated at deploy time, never committed** — that's deliberate: a committed 600 KB single-line file was getting corrupted by branch merges.
-3. **Live GoWild seats in the browser**: web pages can't fetch Frontier cross-origin (and GitHub's IPs get bot-blocked), so the dashboard includes a **bookmarklet** - tap it while on any prefilled Frontier search page and it overlays each flight's GoWild fare and seats remaining, read from the page you're already on, logged in, from your own IP. (On a computer, the local dashboard's **↻ live seats** button does this natively.)
+3. **Live GoWild seats on the phone — the reliable way.** Frontier serves GoWild fares to a signed-in pass holder on a normal connection and blocks datacenter servers, so neither this page nor the GitHub build can fetch them. Three things that do work, most reliable first:
+   1. **Tap a "check fares ↗" link** — opens Frontier prefilled for that route/date, signed in, fares right there. Nothing to install.
+   2. **`node src/cli.js publish`** — runs the sync from *your* connection (not blocked), then pushes `site/live-snapshot.json`; the next build folds it in, so the phone dashboard shows real fares and seat counts.
+   3. **`node src/cli.js dashboard`** — now binds all interfaces and prints a LAN address (`http://192.168.x.x:8787`), so a phone on the same Wi-Fi gets the real **↻ live seats** button.
+
+   A bookmarklet is still included as an optional extra, but it only works in Chrome — Safari and Firefox block `javascript:` bookmarklets on pages with a Content-Security-Policy, which Frontier sends.
 
 The static page renders precomputed views (outbound/hop over a rolling 10-day window, return plans from SFO/LAS both sorts, backup plans, hotels) and reads its same-origin `data.json`. Amtrak live status refreshes directly in the browser (Amtraker's API allows it). If the dashboard moves to a different fork, update the `OWNER`/`REPO`/`BRANCH` constants at the top of `site/index.html`.
 

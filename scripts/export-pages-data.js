@@ -3,7 +3,8 @@
 // Action) so live data is baked in; works fine on seed data too.
 import { writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { ROOT, todayISO, addDaysISO, loadJSON } from '../src/util.js';
+import { ROOT, todayISO, addDaysISO, loadJSON, readSnapshot, writeSection } from '../src/util.js';
+import { readPublished } from '../src/publish.js';
 import { gowildOptions, gowildRules } from '../src/providers/frontier.js';
 import { backupCashOptions } from '../src/providers/flights.js';
 import { awardOptions } from '../src/providers/awards.js';
@@ -11,6 +12,21 @@ import { liveStatus } from '../src/providers/amtrak.js';
 import { hotelOptions } from '../src/providers/hotels.js';
 import { planReturn } from '../src/planner.js';
 import { syncStatus } from '../src/sync.js';
+
+// Frontier blocks GitHub's datacenter IPs, so a build here can never see live
+// GoWild seats. If `node src/cli.js publish` captured them from a residential
+// connection, fold that in first - anything newer than what this build just
+// synced wins, so the phone dashboard shows real seats.
+const published = readPublished();
+if (published?.sections) {
+  for (const [name, sec] of Object.entries(published.sections)) {
+    const current = readSnapshot().sections[name];
+    const newer = !current?.fetchedAt || Date.parse(sec.fetchedAt ?? 0) > Date.parse(current.fetchedAt);
+    if (sec?.status === 'live' && newer) {
+      writeSection(name, { ...sec, notes: `${sec.notes} (published from your own connection ${sec.fetchedAt})` });
+    }
+  }
+}
 
 const config = loadJSON('trip.config.json');
 const today = todayISO();
@@ -31,7 +47,11 @@ function sectionStatus() {
   return Object.fromEntries(
     Object.entries(s).map(([k, v]) => [
       k,
-      { ...v, status: 'seed', notes: 'Seed build from a code push - no API calls made. Press Sync for live data.' },
+      // Data published from the user's own connection is genuinely live - don't
+      // relabel it as a seed build just because this build made no API calls.
+      v.status === 'live'
+        ? v
+        : { ...v, status: 'seed', notes: 'Seed build from a code push - no API calls made. Press Sync for live data.' },
     ]),
   );
 }
