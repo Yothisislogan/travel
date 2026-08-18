@@ -6,7 +6,7 @@
 // search deep links for the flights you should check in the app.
 import {
   loadJSON, fetchJSON, readSnapshot, writeSection,
-  haversineMiles, estimateFlightHours, todayISO, addDaysISO,
+  haversineMiles, estimateFlightHours, todayISO, addDaysISO, BROWSER_HEADERS,
 } from '../util.js';
 
 const rules = loadJSON('src/data/gowild.json');
@@ -265,15 +265,11 @@ export function parseGowildFlights(body) {
   return flights;
 }
 
-const BROWSER_HEADERS = {
-  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
-  accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
-  'accept-language': 'en-US,en;q=0.9',
-};
+const PAGE_HEADERS = { ...BROWSER_HEADERS, accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8' };
 
 export async function checkGowildAvailability(origin, dest, dateISO) {
   const url = searchLink(origin, dest, dateISO);
-  const res = await fetchJSON(url, { headers: BROWSER_HEADERS, timeoutMs: 20000 });
+  const res = await fetchJSON(url, { headers: PAGE_HEADERS, timeoutMs: 20000 });
   if (res.status === 0) return { status: 'unreachable', url, flights: [] };
   if (res.status >= 400) return { status: 'blocked', httpStatus: res.status, url, flights: [] };
   const flights = parseGowildFlights(res.data);

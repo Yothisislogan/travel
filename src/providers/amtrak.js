@@ -1,6 +1,6 @@
 // Amtrak provider. Schedules/fares are seed data (Amtrak has no public fare
 // API); live train status comes free from the community Amtraker API.
-import { loadJSON, fetchJSON, readSnapshot, writeSection } from '../util.js';
+import { loadJSON, fetchJSON, readSnapshot, writeSection, BROWSER_HEADERS } from '../util.js';
 import { fill } from './frontier.js';
 
 const ground = loadJSON('src/data/ground.json');
@@ -35,12 +35,21 @@ export function liveStatus() {
 }
 
 export async function sync() {
-  const res = await fetchJSON(sources.amtraker.trains, { timeoutMs: 20000 });
+  // Browser-like headers first; plain retry as fallback. Amtraker is an open
+  // API, so a 403 nearly always means a middlebox (Cloudflare bot filter,
+  // corporate proxy, VPN egress) rather than the API itself.
+  let res = await fetchJSON(sources.amtraker.trains, { headers: BROWSER_HEADERS, timeoutMs: 20000 });
+  if (!res.ok) {
+    res = await fetchJSON(sources.amtraker.trains, { timeoutMs: 20000 });
+  }
   if (!res.ok || typeof res.data !== 'object') {
+    const why = res.status === 403
+      ? 'blocked with 403 - likely a network proxy/VPN or bot filter on this connection; try another network. (The static dashboard fetches Amtraker from the browser and is unaffected.)'
+      : `unreachable (${res.status || res.error})`;
     return writeSection('amtrak', {
       status: 'error',
       data: {},
-      notes: `Amtraker unreachable (${res.status || res.error}). Seed schedules/fares still available.`,
+      notes: `Amtraker ${why} Live train status is optional - seed schedules/fares still power the planner.`,
     });
   }
   const trains = [];
