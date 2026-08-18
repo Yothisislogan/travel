@@ -27,6 +27,9 @@ export function startServer(port = 8787) {
       if (url.pathname === '/' || url.pathname === '/index.html') {
         res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
         res.end(readFileSync(path.join(ROOT, 'public', 'dashboard.html')));
+      } else if (url.pathname === '/theme.css') {
+        res.writeHead(200, { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'no-cache' });
+        res.end(readFileSync(path.join(ROOT, 'site', 'theme.css')));
       } else if (url.pathname === '/api/status') {
         json(res, 200, { config, sections: syncStatus(), amtrakLive: liveStatus(), today: todayISO() });
       } else if (url.pathname === '/api/sync' && req.method === 'POST') {

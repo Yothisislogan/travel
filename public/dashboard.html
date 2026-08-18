@@ -1,91 +1,70 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="auto">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
 <title>GoWild Trip Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/theme.css">
 <style>
-  :root {
-    --bg: #0f1115; --panel: #171a21; --panel2: #1e2230; --text: #e8eaf0; --dim: #9aa3b5;
-    --accent: #4ade80; --warn: #fbbf24; --bad: #f87171; --link: #7dd3fc; --border: #2a3040;
-  }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header { padding: 20px 24px 8px; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
-  h1 { font-size: 20px; margin: 0; }
-  h1 .wild { color: var(--accent); }
-  .sub { color: var(--dim); font-size: 13px; }
-  main { padding: 8px 24px 48px; display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); max-width: 1500px; }
-  section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; min-width: 0; }
-  section h2 { font-size: 15px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; justify-content: space-between; }
-  .fresh { font-size: 11px; color: var(--dim); font-weight: normal; }
-  button { background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 13px; }
-  button:hover { border-color: var(--accent); }
-  button:disabled { opacity: .5; cursor: wait; }
-  .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
-  select, input[type=date] { background: var(--panel2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 13px; }
-  .row { padding: 8px 10px; margin: 6px 0; background: var(--panel2); border-radius: 8px; overflow-wrap: anywhere; }
-  .row b { font-size: 14px; }
-  .tag { display: inline-block; font-size: 10px; padding: 1px 7px; border-radius: 99px; margin-right: 6px; border: 1px solid var(--border); color: var(--dim); text-transform: uppercase; letter-spacing: .04em; }
-  .tag.gowild { color: #052e13; background: var(--accent); border-color: var(--accent); font-weight: 700; }
-  .tag.flight { color: #7dd3fc; } .tag.award { color: #c4b5fd; } .tag.train { color: #fbbf24; } .tag.bus { color: #fda4af; } .tag.transit { color: var(--dim); }
-  .tag.live { color: #052e13; background: #86efac; border-color: #86efac; font-weight: 700; }
-  .dim { color: var(--dim); font-size: 12.5px; }
-  .warn { color: var(--warn); } .bad { color: var(--bad); } .ok { color: var(--accent); }
-  a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
-  .leg { font-size: 13px; margin: 2px 0 2px 8px; }
-  .total { font-size: 15px; }
-  .statusline { font-size: 12.5px; margin: 3px 0; }
-  #toast { position: fixed; bottom: 16px; right: 16px; background: var(--panel2); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 16px; display: none; }
+  /* local-dashboard extras on top of the shared system */
+  h2 .fresh { font-size: 11px; color: var(--muted); font-weight: 400; font-family: var(--font-body); margin-left: auto; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Go<span class="wild">Wild</span> Trip Agent</h1>
-  <span class="sub">RIC/ORF &rarr; LAS &rarr; SFO &rarr; back east &middot; sync-on-request, nothing auto-polls</span>
-  <span style="flex:1"></span>
+  <h1><span class="mark">✈</span>Go<span class="wild">Wild</span> Trip Agent</h1>
+  <span class="sub">RIC/ORF → LAS → SFO → back east · sync-on-request, nothing auto-polls</span>
+  <span class="spacer"></span>
   <label class="sub">travel date <input type="date" id="date"></label>
-  <button id="syncAll">&#8635; Sync everything</button>
+  <button id="themeBtn" class="ghost" title="Toggle light / dark / auto">◐ Auto</button>
+  <button id="syncAll" class="primary">↻ Sync everything</button>
 </header>
+
+<div id="errbar"></div>
+
 <main>
   <section id="secStatus">
-    <h2>Data freshness <button data-sync="">&#8635;</button></h2>
-    <div id="statusBody" class="dim">loading&hellip;</div>
+    <h2>Data freshness <button data-sync="" class="ghost">↻</button></h2>
+    <div id="statusBody" class="empty">loading&hellip;</div>
   </section>
 
   <section id="secOutbound">
-    <h2>1 &middot; Outbound: RIC/ORF &rarr; LAS <span class="fresh" id="obWindow"></span></h2>
+    <h2><span class="step">1</span> Outbound: RIC/ORF → LAS <span class="fresh" id="obWindow"></span></h2>
     <div class="controls">
       <select id="obFrom"><option value="">RIC + ORF</option><option>RIC</option><option>ORF</option></select>
-      <button data-sync="frontier">&#8635; Refresh GoWild data</button>
+      <button data-sync="frontier" class="ghost">↻ Refresh GoWild data</button>
     </div>
-    <div id="outboundBody" class="dim">loading&hellip;</div>
+    <div id="outboundBody" class="empty">loading&hellip;</div>
   </section>
 
   <section id="secHop">
-    <h2>2 &middot; Vegas hop: LAS &rarr; Bay Area <span class="fresh" id="hopWindow"></span></h2>
-    <div id="hopBody" class="dim">loading&hellip;</div>
+    <h2><span class="step">2</span> Vegas hop: LAS → Bay Area <span class="fresh" id="hopWindow"></span></h2>
+    <div id="hopBody" class="empty">loading&hellip;</div>
   </section>
 
-  <section id="secReturn" style="grid-column: 1 / -1;">
-    <h2>3 &middot; Return east - every mode, ranked</h2>
+  <section id="secReturn" class="wide">
+    <h2><span class="step">3</span> Return east — every mode, ranked</h2>
     <div class="controls">
       from <select id="retFrom"><option>SFO</option><option>OAK</option><option>SJC</option><option>LAS</option></select>
-      sort by <select id="retSort"><option value="time">speed (time), then cost</option><option value="cost">cost, then time</option></select>
+      sort by <select id="retSort"><option value="time">speed, then cost</option><option value="cost">cost, then speed</option></select>
       arrive <select id="retTo"><option value="">Richmond or Norfolk</option><option value="RIC">Richmond</option><option value="ORF">Norfolk</option></select>
       <button id="retGo">Plan</button>
       <span class="dim" id="retNote"></span>
     </div>
-    <div id="returnBody" class="dim">loading&hellip;</div>
+    <div id="returnBody" class="empty">loading&hellip;</div>
   </section>
 
-  <section id="secBackup" style="grid-column: 1 / -1;">
-    <h2>Backup: stuck on the west coast <span class="fresh"></span></h2>
+  <section id="secBackup" class="wide">
+    <h2>Backup: stuck on the west coast</h2>
     <div class="controls">
       stranded at <select id="buFrom"><option>LAS</option><option>SFO</option></select>
-      <button data-sync="flights,awards">&#8635; Refresh fares &amp; awards</button>
+      <button data-sync="flights,awards" class="ghost">↻ Refresh fares &amp; awards</button>
     </div>
-    <div id="backupBody" class="dim">loading&hellip;</div>
+    <div id="backupBody" class="empty">loading&hellip;</div>
   </section>
 </main>
 <div id="toast"></div>
@@ -95,55 +74,65 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'
 const money = (c) => c == null ? '?' : typeof c === 'number' ? '$' + Math.round(c) : (c.min === c.max ? '$' + Math.round(c.min) : '$' + Math.round(c.min) + '–$' + Math.round(c.max));
 const hrs = (h) => { if (h == null) return '?'; const m = Math.round(h * 60); return Math.floor(m / 60) + 'h' + (m % 60 ? String(m % 60).padStart(2, '0') + 'm' : ''); };
 const tag = (m) => '<span class="tag ' + esc(m) + '">' + esc(m) + '</span>';
+const route = (from, via, to) => '<span class="route">' + esc(from) + (via ? ' <span class="hop">→</span> ' + esc(via) : '') + ' <span class="hop">→</span> ' + esc(to) + '</span>';
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 3500); }
+
+function showError(where, err) {
+  const bar = $('errbar');
+  bar.style.display = 'block';
+  bar.innerHTML = '<b>Something went wrong</b> while ' + esc(where) + ': ' + esc(err && err.message || err)
+    + '<div class="actions"><button class="ghost" onclick="document.getElementById(\'errbar\').style.display=\'none\'">Dismiss</button>'
+    + '<button class="ghost" onclick="location.reload()">Reload</button></div>';
+}
+window.addEventListener('error', (e) => showError('rendering the page', e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => showError('a background request', e.reason));
+
+// theme toggle (auto -> dark -> light)
+const THEMES = ['auto', 'dark', 'light'], THEME_LABEL = { auto: '◐ Auto', dark: '☾ Dark', light: '☀ Light' };
+function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); $('themeBtn').textContent = THEME_LABEL[t]; try { localStorage.setItem('gw_theme', t); } catch (e) {} }
+$('themeBtn').addEventListener('click', () => { const cur = document.documentElement.getAttribute('data-theme') || 'auto'; applyTheme(THEMES[(THEMES.indexOf(cur) + 1) % THEMES.length]); });
+try { applyTheme(localStorage.getItem('gw_theme') || 'auto'); } catch (e) { applyTheme('auto'); }
 
 function tomorrow() { const d = new Date(Date.now() + 864e5); return d.toISOString().slice(0, 10); }
 $('date').value = tomorrow();
 
-async function api(path) { const r = await fetch(path); if (!r.ok) throw new Error((await r.json()).error || r.status); return r.json(); }
-function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; setTimeout(() => t.style.display = 'none', 3500); }
+async function api(path) { const r = await fetch(path); if (!r.ok) { let m; try { m = (await r.json()).error; } catch (e) {} throw new Error(m || ('HTTP ' + r.status)); } return r.json(); }
 
 function gowildHTML(d) {
-  let h = '<div class="statusline ' + (d.window.canBookNow ? 'ok' : 'warn') + '">' + esc(d.window.note) + '</div>';
-  if (d.blackout) h += '<div class="statusline bad">Possible blackout: ' + esc(d.blackout.label) + '</div>';
-  if (!d.paths.length) h += '<div class="row">No Frontier paths in the current route map.</div>';
+  let h = '<div class="note ' + (d.window.canBookNow ? 'ok' : 'warn') + '">' + esc(d.window.note) + '</div>';
+  if (d.blackout) h += '<div class="note bad">Possible blackout: ' + esc(d.blackout.label) + '</div>';
+  if (!d.paths.length) h += '<div class="empty">No Frontier paths in the current route map.</div>';
   for (const p of d.paths) {
-    h += '<div class="row">' + tag('gowild') + '<b>' + esc(p.from) + (p.via ? ' &rarr; ' + esc(p.via) : '') + ' &rarr; ' + esc(p.to) + '</b>'
+    h += '<div class="row">' + tag('gowild') + route(p.from, p.via, p.to)
       + (p.via ? '' : ' <span class="tag">nonstop</span>')
-      + (p.daysPerWeek && p.daysPerWeek < 7 ? ' <span class="tag" style="color:var(--warn)">' + esc(p.frequencyNote || 'not daily') + '</span>' : '')
-      + (p.operatesOnDate === false ? ' <span class="tag" style="color:var(--bad)">does not run ' + esc(p.dayOfWeek) + '</span>' : '')
-      + ' <span class="dim">~' + hrs(p.totalHours) + ' &middot; est ' + money(p.estCostUSD) + ' taxes/fees</span>'
-      + ' &middot; <a target="_blank" href="' + esc(p.searchLink) + '">check fares &nearr;</a>';
+      + (p.daysPerWeek && p.daysPerWeek < 7 ? ' <span class="tag warn" title="' + esc(p.frequencyNote || '') + '">' + esc((p.frequencyNote || 'not daily').split(' (')[0]) + '</span>' : '')
+      + (p.operatesOnDate === false ? ' <span class="tag bad">no ' + esc(p.dayOfWeek) + ' service</span>' : '')
+      + '<div class="dim" style="margin-top:4px">~' + hrs(p.totalHours) + ' · est ' + money(p.estCostUSD) + ' taxes/fees · <a target="_blank" rel="noopener" href="' + esc(p.searchLink) + '">check fares ↗</a></div>';
     if (p.live) {
-      if (!p.live.gowildFlights) {
-        h += '<div class="leg"><span class="tag live">live</span> no GoWild seats showing right now</div>';
-      }
+      if (!p.live.gowildFlights) h += '<div class="leg"><span class="tag live">live</span> no GoWild seats showing right now</div>';
       for (const f of p.live.flights) {
         h += '<div class="leg"><span class="tag live">live</span> ' + (f.flightNumber ? '#' + esc(f.flightNumber) + ' ' : '') + esc(f.departure || '')
-          + (f.stops ? ' (' + esc(f.stops) + ')' : '') + ' &middot; $' + esc(f.goWildFare ?? '?')
-          + ' &middot; ' + (f.goWildSeatsRemaining != null ? esc(f.goWildSeatsRemaining) + ' GoWild seat(s) left' : 'GoWild available') + '</div>';
+          + (f.stops ? ' (' + esc(f.stops) + ')' : '') + ' · $' + esc(f.goWildFare ?? '?')
+          + ' · ' + (f.goWildSeatsRemaining != null ? esc(f.goWildSeatsRemaining) + ' GoWild seat(s) left' : 'GoWild available') + '</div>';
       }
     }
     h += '</div>';
   }
-  if (d.trackers && d.trackers.length) {
-    h += '<div class="dim">Live GoWild seat checks: ' + d.trackers.map((t) => '<a target="_blank" href="' + esc(t.url) + '">' + esc(t.name) + ' &nearr;</a>').join(' &middot; ') + '</div>';
-  }
-  h += '<div class="dim">Route map: ' + esc(d.freshness) + ' &middot; ' + esc(d.warning) + '</div>';
+  if (d.trackers && d.trackers.length) h += '<div class="dim" style="margin-top:6px">Live GoWild seat checks: ' + d.trackers.map((t) => '<a target="_blank" rel="noopener" href="' + esc(t.url) + '">' + esc(t.name) + ' ↗</a>').join(' · ') + '</div>';
+  h += '<div class="dim" style="margin-top:4px">Route map: ' + esc(d.freshness) + ' · ' + esc(d.warning) + '</div>';
   return h;
 }
 
 async function loadStatus() {
   const d = await api('/api/status');
   let h = '';
-  for (const [name, s] of Object.entries(d.sections)) {
-    const cls = s.status === 'live' ? 'ok' : s.status === 'error' ? 'bad' : s.status === 'never' ? 'warn' : '';
-    h += '<div class="statusline"><b>' + esc(s.label) + '</b> <span class="' + cls + '">[' + esc(s.status) + ']</span> <span class="dim">' + esc(s.freshness) + ' &middot; ' + esc(s.notes) + '</span></div>';
+  for (const [, s] of Object.entries(d.sections)) {
+    const cls = s.status === 'live' ? 'live' : s.status === 'error' ? 'bad' : s.status === 'never' ? 'warn' : '';
+    h += '<div style="margin:5px 0"><b>' + esc(s.label) + '</b> <span class="tag ' + cls + '">' + esc(s.status) + '</span> <span class="dim">' + esc(s.freshness) + ' · ' + esc(s.notes) + '</span></div>';
   }
   if (d.amtrakLive.length) {
-    h += '<div style="margin-top:8px"><b>Live Amtrak</b> (long-distance trains on your likely routes):</div>';
-    for (const t of d.amtrakLive.slice(0, 8)) {
-      h += '<div class="statusline dim">' + esc(t.route) + ' #' + esc(t.trainNum) + ' ' + esc(t.heading || '') + ' &middot; ' + esc(t.status || '?') + (t.minutesLate ? ' (' + esc(t.minutesLate) + ')' : '') + '</div>';
-    }
+    h += '<div style="margin-top:10px"><b>Live Amtrak</b> <span class="dim">(long-distance trains on your likely routes)</span></div>';
+    for (const t of d.amtrakLive.slice(0, 8)) h += '<div class="dim" style="margin:3px 0">' + esc(t.route) + ' #' + esc(t.trainNum) + ' ' + esc(t.heading || '') + ' · ' + esc(t.status || '?') + (t.minutesLate ? ' (' + esc(t.minutesLate) + ')' : '') + '</div>';
   }
   $('statusBody').innerHTML = h;
 }
@@ -167,40 +156,50 @@ async function loadReturn() {
   $('retNote').textContent = d.note;
   let h = '';
   d.itineraries.forEach((it, i) => {
-    h += '<div class="row"><div class="total"><b>' + (i + 1) + '. ' + hrs(it.totalHours) + '</b> &middot; ' + money(it.totalCostUSD)
-      + (it.totalMiles ? ' + ' + it.totalMiles.toLocaleString() + ' miles' : '') + ' &middot; arrive <b>' + esc(it.arrival) + '</b> '
+    h += '<div class="row"><div><span class="rank">' + (i + 1) + '.</span> <span class="rank">' + hrs(it.totalHours) + '</span> <span class="num">· ' + money(it.totalCostUSD)
+      + (it.totalMiles ? ' + ' + it.totalMiles.toLocaleString() + ' mi' : '') + '</span> · arrive <b>' + esc(it.arrival) + '</b> '
       + it.badges.map((b) => '<span class="tag">' + esc(b) + '</span>').join('') + '</div>';
     for (const leg of it.legs) {
-      h += '<div class="leg">' + tag(leg.mode) + esc(leg.from) + ' &rarr; ' + esc(leg.to) + ' &middot; ' + hrs(leg.hours) + ' &middot; ' + money(leg.costUSD)
-        + ' <span class="dim">' + esc(leg.operator || '') + '</span>'
+      h += '<div class="leg">' + tag(leg.mode) + route(leg.from, null, leg.to) + ' <span class="dim">· ' + hrs(leg.hours) + ' · ' + money(leg.costUSD)
+        + ' · ' + esc(leg.operator || '') + '</span>'
         + (leg.dataStatus === 'live' ? ' <span class="tag live">live</span>' : '')
-        + (leg.bookLink ? ' &middot; <a target="_blank" href="' + esc(leg.bookLink) + '">book &nearr;</a>' : '') + '</div>';
+        + (leg.bookLink ? ' · <a target="_blank" rel="noopener" href="' + esc(leg.bookLink) + '">book ↗</a>' : '') + '</div>';
     }
     h += '</div>';
   });
-  $('returnBody').innerHTML = h || '<div class="row">No itineraries found.</div>';
+  $('returnBody').innerHTML = h || '<div class="empty">No itineraries found.</div>';
 }
 
 async function loadBackup() {
   const d = await api('/api/backup?date=' + $('date').value + '&from=' + $('buFrom').value);
-  let h = '<b>Cash fares</b> (cheapest markets first):';
+  let h = '<div class="dim" style="margin-bottom:4px"><b>Cash fares</b> — cheapest markets first</div>';
   for (const o of d.cash.options) {
-    h += '<div class="row">' + tag('flight') + '<b>' + esc(o.from) + ' &rarr; ' + esc(o.to) + '</b> ' + money(o.costUSD) + ' &middot; ~' + hrs(o.hours)
-      + ' &middot; ' + (o.nonstop ? 'nonstop' : '1-stop') + (o.dataStatus === 'live' ? ' <span class="tag live">live</span>' : ' <span class="tag">estimate</span>')
-      + '<div class="dim">' + esc(o.airlines.join(', ')) + ' &middot; <a target="_blank" href="' + esc(o.links.googleFlights) + '">Google Flights &nearr;</a> &middot; <a target="_blank" href="' + esc(o.links.kayak) + '">Kayak &nearr;</a></div></div>';
+    h += '<div class="row">' + tag('flight') + route(o.from, null, o.to) + ' <b class="num">' + money(o.costUSD) + '</b> <span class="dim">· ~' + hrs(o.hours)
+      + ' · ' + (o.nonstop ? 'nonstop' : '1-stop') + '</span>' + (o.dataStatus === 'live' ? ' <span class="tag live">live</span>' : ' <span class="tag">estimate</span>')
+      + '<div class="dim">' + esc(o.airlines.join(', ')) + ' · <a target="_blank" rel="noopener" href="' + esc(o.links.googleFlights) + '">Google Flights ↗</a> · <a target="_blank" rel="noopener" href="' + esc(o.links.kayak) + '">Kayak ↗</a></div></div>';
   }
-  h += '<b style="display:block;margin-top:10px">Miles options</b> (fewest miles first):';
+  h += '<div class="dim" style="margin:10px 0 4px"><b>Miles options</b> — fewest miles first</div>';
   for (const o of d.awards.options.slice(0, 8)) {
-    h += '<div class="row">' + tag('award') + '<b>' + esc(o.from) + ' &rarr; ' + esc(o.to) + '</b> ~' + o.miles.toLocaleString() + ' ' + esc(o.program) + ' + ' + money(o.feesUSD)
+    h += '<div class="row">' + tag('award') + route(o.from, null, o.to) + ' <b class="num">~' + o.miles.toLocaleString() + '</b> <span class="dim">' + esc(o.program) + ' + ' + money(o.feesUSD) + '</span>'
       + (o.dataStatus === 'live' ? ' <span class="tag live">live</span>' : '')
-      + (o.searchLink ? ' &middot; <a target="_blank" href="' + esc(o.searchLink) + '">award search &nearr;</a>' : '') + '</div>';
+      + (o.searchLink ? ' · <a target="_blank" rel="noopener" href="' + esc(o.searchLink) + '">award search ↗</a>' : '') + '</div>';
   }
   h += '<div class="dim" style="margin-top:8px">' + esc(d.awards.closeInFees) + '<br>' + d.cash.positioningTips.map(esc).join('<br>') + '</div>';
   $('backupBody').innerHTML = h;
 }
 
+// Each loader is independent; one failure shows a message in its own card, never blanks the app.
+function guard(fn, bodyId, label) {
+  return fn().catch((e) => { if (bodyId) $(bodyId).innerHTML = '<div class="note bad">Couldn\'t load ' + label + ': ' + esc(e.message) + '</div>'; });
+}
 async function refreshAll() {
-  await Promise.allSettled([loadStatus(), loadOutbound(), loadHop(), loadReturn(), loadBackup()]);
+  await Promise.allSettled([
+    guard(loadStatus, 'statusBody', 'status'),
+    guard(loadOutbound, 'outboundBody', 'outbound'),
+    guard(loadHop, 'hopBody', 'the Vegas hop'),
+    guard(loadReturn, 'returnBody', 'return plans'),
+    guard(loadBackup, 'backupBody', 'backup options'),
+  ]);
 }
 
 document.querySelectorAll('[data-sync]').forEach((btn) => {
@@ -221,10 +220,8 @@ $('syncAll').addEventListener('click', async () => {
   catch (e) { toast('Sync failed: ' + e.message); }
   $('syncAll').disabled = false;
 });
-$('retGo').addEventListener('click', loadReturn);
-for (const id of ['date', 'obFrom', 'retFrom', 'retSort', 'retTo', 'buFrom']) {
-  $(id).addEventListener('change', refreshAll);
-}
+$('retGo').addEventListener('click', () => guard(loadReturn, 'returnBody', 'return plans'));
+for (const id of ['date', 'obFrom', 'retFrom', 'retSort', 'retTo', 'buFrom']) $(id).addEventListener('change', refreshAll);
 refreshAll();
 </script>
 </body>
