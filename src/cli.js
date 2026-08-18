@@ -44,6 +44,15 @@ function printGowildBlock(title, opts) {
     const freq = p.daysPerWeek && p.daysPerWeek < 7 ? `  [${p.frequencyNote}]` : '';
     const dayFlag = p.operatesOnDate === false ? `  !! does NOT run on ${p.dayOfWeek}` : '';
     console.log(`  ${routeStr.padEnd(28)} ~${fmtHours(p.totalHours).padEnd(7)} est ${fmtMoney(p.estCostUSD)} in taxes/fees${freq}${dayFlag}`);
+    if (p.live) {
+      if (!p.live.gowildFlights) {
+        console.log(`    LIVE: no GoWild seats showing on ${p.from}-${p.to} right now`);
+      }
+      for (const f of p.live.flights) {
+        const seats = f.goWildSeatsRemaining != null ? `${f.goWildSeatsRemaining} GoWild seat(s) left` : 'GoWild available';
+        console.log(`    LIVE: ${f.flightNumber ? `#${f.flightNumber} ` : ''}${f.departure ?? ''}${f.stops ? ` (${f.stops})` : ''} - $${f.goWildFare ?? '?'} - ${seats}`);
+      }
+    }
     console.log(dim(`    check: ${p.searchLink}`));
   }
   if (opts.trackers?.length) {

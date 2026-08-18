@@ -49,7 +49,7 @@ GoWild fares are **capacity-controlled and normally bookable starting the day be
 
 | Section | Live source | Without it |
 |---------|-------------|------------|
-| Frontier GoWild | Reachability probe + prefilled search links + community trackers (Frontier's official API is partner-only NDC) | Seed route map + links |
+| Frontier GoWild | **Live seat counts** parsed from Frontier's own search response (`goWildFareSeatsRemaining`, no login needed) for this trip's route pairs - the same source 1491 Club/GoWilder poll at scale; see [docs/API-OPTIONS.md](docs/API-OPTIONS.md) | Seed route map + prefilled links + community trackers |
 | Backup cash fares | 1st choice: [SerpAPI](https://serpapi.com) Google Flights (all carriers). Fallback: [Amadeus Self-Service](https://developers.amadeus.com) free tier - **caveat: excludes AA/Delta/Southwest/Breeze** | Seed price ranges + Google Flights/Kayak links |
 | Award (miles) | [Seats.aero Partner API](https://seats.aero) key in `.env` | Seed miles estimates + program search links |
 | Amtrak | [Amtraker](https://amtraker.com) live train status - free, no key | Seed schedules/fares |

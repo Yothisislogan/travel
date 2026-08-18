@@ -6,7 +6,7 @@
         "name": "flyfrontier-flight-search-page",
         "url": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true",
         "kind": "html-probe",
-        "notes": "Bot-protected (press-and-hold challenges consistent with PerimeterX/HUMAN); a 200 here only proves reachability. Real GoWild availability requires the site/app while logged in. Scrapers report 403s and use randomized delays - this agent only probes, it does not scrape."
+        "notes": "The sync engine now parses this page's embedded journeys JSON for per-flight GoWild fields (isGoWildFareEnabled, goWildFare, goWildFareSeatsRemaining) - visible without login. Bot protection may 403; the agent paces requests 2-4s and stops at the first block. See docs/API-OPTIONS.md."
       }
     ],
     "deepLink": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true",
@@ -22,7 +22,12 @@
         "notes": "GoWild companion with maps, multi-hop routing, real-time availability"
       }
     ],
-    "officialApi": "developer.flyfrontier.com is NDC for accredited travel-trade partners only - no hobbyist access"
+    "officialApi": "developer.flyfrontier.com is NDC for accredited travel-trade partners only - no hobbyist access",
+    "dataFields": [
+      "isGoWildFareEnabled",
+      "goWildFare",
+      "goWildFareSeatsRemaining"
+    ]
   },
   "amtraker": {
     "trains": "https://api-v3.amtraker.com/v3/trains",

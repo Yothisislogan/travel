@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { haversineMiles, estimateFlightHours, fmtHours, fmtMoney, addCosts, costMidpoint, addDaysISO } from '../src/util.js';
-import { findGowildPaths, bookingWindow, isBlackout, gowildOptions, frontierDate, dayOfWeek, operatesOn } from '../src/providers/frontier.js';
+import { findGowildPaths, bookingWindow, isBlackout, gowildOptions, frontierDate, dayOfWeek, operatesOn, parseGowildFlights } from '../src/providers/frontier.js';
 import { planReturn, transferBuffer, buildEdges } from '../src/planner.js';
 import { backupCashOptions } from '../src/providers/flights.js';
 import { awardOptions } from '../src/providers/awards.js';
@@ -103,6 +103,33 @@ test('outbound RIC/ORF -> LAS paths exist via researched connections', () => {
   assert.ok(paths.some((p) => p.from === 'ORF' && (p.via === 'ATL' || p.via === 'MCO')), 'ORF via ATL/MCO');
   const ricDen = paths.find((p) => p.from === 'RIC' && p.via === 'DEN');
   assert.equal(ricDen.daysPerWeek, 2, 'RIC-DEN runs 2x weekly - path limited to those days');
+});
+
+test('parseGowildFlights extracts GoWild fields from embedded journeys JSON', () => {
+  const payload = {
+    journeys: [{
+      flights: [
+        { flightNumber: '2101', departureDate: '2026-08-18T07:15:00', arrivalDate: '2026-08-18T08:45:00', stopsText: 'Nonstop', isGoWildFareEnabled: true, goWildFare: 14.91, goWildFareSeatsRemaining: 4 },
+        { flightNumber: '2205', departureDate: '2026-08-18T19:30:00', stopsText: 'Nonstop', isGoWildFareEnabled: false, goWildFare: null, goWildFareSeatsRemaining: null },
+      ],
+    }],
+  };
+  // As raw JSON:
+  const fromJSON = parseGowildFlights(JSON.stringify(payload));
+  assert.equal(fromJSON.length, 2);
+  assert.equal(fromJSON[0].gowildEnabled, true);
+  assert.equal(fromJSON[0].goWildFare, 14.91);
+  assert.equal(fromJSON[0].goWildSeatsRemaining, 4);
+  assert.equal(fromJSON[1].gowildEnabled, false);
+  // As HTML-escaped blob inside a page (how InternalSelect embeds it):
+  const escaped = JSON.stringify(payload).replace(/"/g, '&quot;');
+  const html = `<html><body><script>var flightData = JSON.parse('${escaped}');</script></body></html>`;
+  const fromHTML = parseGowildFlights(html);
+  assert.equal(fromHTML.length, 2);
+  assert.equal(fromHTML[0].flightNumber, '2101');
+  // Garbage in -> empty out, never a throw:
+  assert.deepEqual(parseGowildFlights('<html>Access Denied</html>'), []);
+  assert.deepEqual(parseGowildFlights('{"journeys": oops'), []);
 });
 
 test('transfer buffers', () => {

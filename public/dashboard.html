@@ -112,7 +112,18 @@ function gowildHTML(d) {
       + (p.daysPerWeek && p.daysPerWeek < 7 ? ' <span class="tag" style="color:var(--warn)">' + esc(p.frequencyNote || 'not daily') + '</span>' : '')
       + (p.operatesOnDate === false ? ' <span class="tag" style="color:var(--bad)">does not run ' + esc(p.dayOfWeek) + '</span>' : '')
       + ' <span class="dim">~' + hrs(p.totalHours) + ' &middot; est ' + money(p.estCostUSD) + ' taxes/fees</span>'
-      + ' &middot; <a target="_blank" href="' + esc(p.searchLink) + '">check fares &nearr;</a></div>';
+      + ' &middot; <a target="_blank" href="' + esc(p.searchLink) + '">check fares &nearr;</a>';
+    if (p.live) {
+      if (!p.live.gowildFlights) {
+        h += '<div class="leg"><span class="tag live">live</span> no GoWild seats showing right now</div>';
+      }
+      for (const f of p.live.flights) {
+        h += '<div class="leg"><span class="tag live">live</span> ' + (f.flightNumber ? '#' + esc(f.flightNumber) + ' ' : '') + esc(f.departure || '')
+          + (f.stops ? ' (' + esc(f.stops) + ')' : '') + ' &middot; $' + esc(f.goWildFare ?? '?')
+          + ' &middot; ' + (f.goWildSeatsRemaining != null ? esc(f.goWildSeatsRemaining) + ' GoWild seat(s) left' : 'GoWild available') + '</div>';
+      }
+    }
+    h += '</div>';
   }
   if (d.trackers && d.trackers.length) {
     h += '<div class="dim">Live GoWild seat checks: ' + d.trackers.map((t) => '<a target="_blank" href="' + esc(t.url) + '">' + esc(t.name) + ' &nearr;</a>').join(' &middot; ') + '</div>';

@@ -169,16 +169,21 @@ export function findGowildPaths(fromList, toList, { maxConnections = 1 } = {}) {
 export function gowildOptions(fromList, toList, dateISO) {
   const window = bookingWindow(dateISO);
   const blackout = isBlackout(dateISO);
+  const checklist = readSnapshot().sections.frontier?.data?.checklist ?? [];
   const paths = findGowildPaths(fromList, toList).map((p) => {
     // Does every segment with named operating days run on this date's weekday?
     const segOps = p.segments.map((s) => operatesOn(frequencyOf(s.from, s.to)?.days, dateISO));
     const operatesOnDate = segOps.some((x) => x === false) ? false : segOps.every((x) => x === true) ? true : null;
+    const live = checklist.find((c) => c.pair === `${p.from}-${p.to}` && c.date === dateISO && c.status === 'live');
     return {
       ...p,
       mode: 'gowild',
       operatesOnDate,
       dayOfWeek: dayOfWeek(dateISO),
       searchLink: searchLink(p.from, p.to, dateISO),
+      live: live
+        ? { gowildFlights: live.gowildFlights, flights: live.flights.filter((f) => f.gowildEnabled).slice(0, 6) }
+        : null,
     };
   });
   return {
@@ -192,38 +197,130 @@ export function gowildOptions(fromList, toList, dateISO) {
   };
 }
 
-// Sync: probe the booking site (reachability only - honest about what a probe
-// can prove) and record which trip pairs to check, with prefilled links for
-// the next bookable day.
+// ---- live GoWild availability ----
+// Frontier's own booking search (booking.flyfrontier.com/Flight/InternalSelect)
+// embeds a JSON payload with per-flight GoWild fields - isGoWildFareEnabled,
+// goWildFare, goWildFareSeatsRemaining - visible WITHOUT login. This is the
+// same data community trackers (1491 Club, GoWilder, WildFares) poll at scale.
+// We fetch it only for this trip's own pairs, at a polite pace, and fail
+// honestly when bot protection blocks us. Note: automated access sits outside
+// Frontier's ToS - keep usage personal and low-volume (see docs/API-OPTIONS.md).
+
+const HTML_ENTITIES = { '&quot;': '"', '&#34;': '"', '&amp;': '&', '&#38;': '&', '&lt;': '<', '&gt;': '>', '&#39;': "'" };
+function unescapeHTML(s) {
+  return s.replace(/&quot;|&#34;|&amp;|&#38;|&lt;|&gt;|&#39;/g, (m) => HTML_ENTITIES[m]);
+}
+
+// Extract the first balanced JSON array starting at text[start] === '['.
+function balancedArray(text, start) {
+  let depth = 0;
+  let inStr = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (c === '\\') i++;
+      else if (c === '"') inStr = false;
+    } else if (c === '"') inStr = true;
+    else if (c === '[' || c === '{') depth++;
+    else if (c === ']' || c === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+// Parse GoWild flight data out of an InternalSelect response (HTML or JSON).
+// Returns [] when the payload isn't found (blocked page, layout change).
+export function parseGowildFlights(body) {
+  if (typeof body !== 'string') body = JSON.stringify(body);
+  let text = body.includes('&quot;') ? unescapeHTML(body) : body;
+  const key = text.indexOf('"journeys"');
+  if (key === -1) return [];
+  const arrStart = text.indexOf('[', key);
+  if (arrStart === -1) return [];
+  const arr = balancedArray(text, arrStart);
+  if (!arr) return [];
+  let journeys;
+  try {
+    journeys = JSON.parse(arr);
+  } catch {
+    return [];
+  }
+  const flights = [];
+  for (const j of Array.isArray(journeys) ? journeys : []) {
+    for (const f of j?.flights ?? []) {
+      flights.push({
+        flightNumber: f.flightNumber ?? f.flightCode ?? null,
+        departure: f.departureDate ?? f.std ?? null,
+        arrival: f.arrivalDate ?? f.sta ?? null,
+        stops: f.stopsText ?? (Array.isArray(f.legs) ? `${f.legs.length - 1} stop(s)` : null),
+        duration: f.duration ?? null,
+        gowildEnabled: !!f.isGoWildFareEnabled,
+        goWildFare: f.goWildFare ?? null,
+        goWildSeatsRemaining: f.goWildFareSeatsRemaining ?? null,
+      });
+    }
+  }
+  return flights;
+}
+
+const BROWSER_HEADERS = {
+  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+  accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8',
+  'accept-language': 'en-US,en;q=0.9',
+};
+
+export async function checkGowildAvailability(origin, dest, dateISO) {
+  const url = searchLink(origin, dest, dateISO);
+  const res = await fetchJSON(url, { headers: BROWSER_HEADERS, timeoutMs: 20000 });
+  if (res.status === 0) return { status: 'unreachable', url, flights: [] };
+  if (res.status >= 400) return { status: 'blocked', httpStatus: res.status, url, flights: [] };
+  const flights = parseGowildFlights(res.data);
+  return { status: flights.length ? 'live' : 'no-data', httpStatus: res.status, url, flights };
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Sync: pull live GoWild availability for this trip's own pairs (politely
+// paced), falling back to a reachability report + checklist links when blocked.
 export async function sync({ date } = {}) {
   const checkDate = date ?? addDaysISO(todayISO(), 1);
   const pairs = [
     ['RIC', 'LAS'], ['ORF', 'LAS'], ['LAS', 'SFO'],
     ['SFO', 'RIC'], ['SFO', 'ORF'], ['LAS', 'RIC'], ['LAS', 'ORF'],
   ];
-  const probes = [];
-  for (const attempt of sources.frontier.attempts ?? []) {
-    const url = fill(attempt.url, { origin: 'RIC', dest: 'LAS', date: frontierDate(checkDate) });
-    const res = await fetchJSON(url, { timeoutMs: 12000 });
-    probes.push({ name: attempt.name, url, reachable: res.status > 0, httpStatus: res.status, notes: attempt.notes });
+  const checklist = [];
+  let liveCount = 0;
+  let blocked = false;
+  let unreachable = false;
+  for (const [o, d] of pairs) {
+    const check = await checkGowildAvailability(o, d, checkDate);
+    if (check.status === 'live') liveCount++;
+    if (check.status === 'blocked') blocked = true;
+    if (check.status === 'unreachable') unreachable = true;
+    checklist.push({
+      pair: `${o}-${d}`,
+      date: checkDate,
+      window: bookingWindow(checkDate),
+      searchLink: check.url,
+      status: check.status,
+      flights: check.flights,
+      gowildFlights: check.flights.filter((f) => f.gowildEnabled).length,
+    });
+    // Polite pacing between requests; stop hammering once clearly blocked.
+    if (blocked || unreachable) break;
+    await sleep(2000 + Math.floor(Math.random() * 2000));
   }
-  // 4xx (e.g. 403) usually means bot protection or a proxy refusing us -
-  // that is NOT live data, just network reachability.
-  const reachable = probes.some((p) => p.httpStatus >= 200 && p.httpStatus < 400);
-  const blocked = !reachable && probes.some((p) => p.httpStatus >= 400);
-  const checklist = pairs.map(([o, d]) => ({
-    pair: `${o}-${d}`,
-    date: checkDate,
-    window: bookingWindow(checkDate),
-    searchLink: searchLink(o, d, checkDate),
-  }));
   return writeSection('frontier', {
-    status: reachable ? 'live' : 'seed',
-    data: { routes: seedRoutes.routes, asOf: seedRoutes.asOf, probes, checklist },
-    notes: reachable
-      ? 'Frontier site reachable. GoWild fares must be confirmed logged-in (site/app) - use the checklist links.'
+    status: liveCount > 0 ? 'live' : 'seed',
+    data: { routes: seedRoutes.routes, asOf: seedRoutes.asOf, checklist },
+    notes: liveCount > 0
+      ? `Live GoWild availability parsed for ${liveCount}/${pairs.length} pairs on ${checkDate}. Seats shown are goWildFareSeatsRemaining from Frontier's own search.`
       : blocked
-        ? 'Frontier refused the probe (bot protection or proxy) - open the checklist links in your own browser instead.'
-        : 'Could not reach Frontier from here (offline/blocked). Using seed route map; use the checklist links from your own device.',
+        ? 'Frontier blocked the request (bot protection) - open the checklist links in your own browser; from a residential IP this usually works.'
+        : unreachable
+          ? 'Could not reach Frontier from here (offline/blocked network). Using seed route map; use the checklist links from your own device.'
+          : 'Reached Frontier but could not find fare data in the response (page layout may have changed) - use the checklist links.',
   });
 }
