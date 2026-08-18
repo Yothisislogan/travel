@@ -1,0 +1,243 @@
+{
+  "_comment": "Backup (non-Frontier) markets for getting un-stuck on the west coast, researched 2026-08-17. Cash = typical last-minute (0-3 days out) one-way economy; miles = representative last-minute economy award (saver-to-mid range in milesRange). Live prices via Amadeus when keys configured.",
+  "asOf": "2026-08-17",
+  "closeInFees": "Major US programs no longer charge close-in award booking fees, but award prices are dynamic and spike last-minute. Atmos Rewards (ex-Alaska/Hawaiian) books AA flights with a $20 partner fee.",
+  "positioningTips": [
+    "Breeze flies LAS->RIC (~3x/wk), LAS->ORF (~2x/wk) and SFO->RIC (~2x/wk) NONSTOP - check breezeairways.com first; it does not appear in every OTA.",
+    "Frontier's own LAS->IAD daily nonstop is GoWild-eligible: get to LAS and it's ~$15 in fees home, then Metro+Amtrak or a ~2h drive to Richmond.",
+    "SFO->IAD on United runs up to ~9-10x/day - the frequency means good same-day rebooking odds, then Amtrak/bus to Richmond or Norfolk.",
+    "Flying into DCA/BWI/IAD is often much cheaper than RIC/ORF; finish with Amtrak Northeast Regional or FlixBus to Richmond/Norfolk.",
+    "Check RDU too - sometimes cheaper than RIC and a 2.5-3h bus/drive from Richmond."
+  ],
+  "markets": {
+    "LAS-RIC": {
+      "airlines": [
+        "Breeze (nonstop ~3x/wk)",
+        "American (via CLT/DFW/PHX)",
+        "United (via DEN/ORD/IAD)",
+        "Delta (via ATL/SLC/MSP)",
+        "Southwest (via MDW/BNA/DEN)",
+        "JetBlue (via BOS/JFK, limited)"
+      ],
+      "nonstop": true,
+      "typicalCashUSD": {
+        "min": 150,
+        "max": 550
+      },
+      "typicalMiles": {
+        "American AAdvantage": 17500,
+        "United MileagePlus": 17500,
+        "Delta SkyMiles": 22500,
+        "Southwest Rapid Rewards": 20000,
+        "Atmos Rewards": 15000
+      },
+      "milesRange": "AA/UA 12.5k-35k, DL 15k-50k, WN 15k-35k (fare-linked), Atmos 12.5k-30k on AA metal + $20 fee"
+    },
+    "LAS-ORF": {
+      "airlines": [
+        "Breeze (nonstop ~2x/wk)",
+        "American (via CLT/DFW/PHX)",
+        "Delta (via ATL)",
+        "United (via ORD/IAD/DEN)",
+        "Southwest (via MDW/BNA/DEN)"
+      ],
+      "nonstop": true,
+      "typicalCashUSD": {
+        "min": 150,
+        "max": 550
+      },
+      "typicalMiles": {
+        "American AAdvantage": 17500,
+        "United MileagePlus": 17500,
+        "Delta SkyMiles": 22500,
+        "Atmos Rewards": 15000
+      },
+      "milesRange": "AA/UA 12.5k-35k, DL 15k-50k, Atmos 12.5k-30k on AA metal"
+    },
+    "LAS-DCA": {
+      "airlines": [
+        "American (nonstop ~1x daily)",
+        "Southwest (nonstop ~1x daily)",
+        "United/Delta (1-stop)"
+      ],
+      "nonstop": true,
+      "typicalCashUSD": {
+        "min": 180,
+        "max": 500
+      },
+      "typicalMiles": {
+        "American AAdvantage": 17500,
+        "Southwest Rapid Rewards": 20000,
+        "Atmos Rewards": 15000
+      },
+      "milesRange": "AA 12.5k-35k, WN 15k-35k fare-linked",
+      "nonstopPrograms": [
+        "American AAdvantage",
+        "Southwest Rapid Rewards"
+      ]
+    },
+    "LAS-IAD": {
+      "airlines": [
+        "United (nonstop)",
+        "Frontier (nonstop daily - GoWild eligible!)"
+      ],
+      "nonstop": true,
+      "typicalCashUSD": {
+        "min": 130,
+        "max": 420
+      },
+      "typicalMiles": {
+        "United MileagePlus": 16000
+      },
+      "milesRange": "UA 12.5k-35k",
+      "nonstopPrograms": [
+        "United MileagePlus"
+      ]
+    },
+    "LAS-BWI": {
+      "airlines": [
+        "Southwest (nonstop)",
+        "Spirit (nonstop - verify post-2025 restructuring)"
+      ],
+      "nonstop": true,
+      "typicalCashUSD": {
+        "min": 100,
+        "max": 380
+      },
+      "typicalMiles": {
+        "Southwest Rapid Rewards": 16000
+      },
+      "milesRange": "WN fare-linked ~1.15-1.7cpp",
+      "nonstopPrograms": [
+        "Southwest Rapid Rewards"
+      ]
+    },
+    "LAS-RDU": {
+      "airlines": [
+        "American (via CLT/DFW)",
+        "Delta (via ATL)",
+        "United (via hubs)"
+      ],
+      "nonstop": false,
+      "typicalCashUSD": {
+        "min": 140,
+        "max": 450
+      },
+      "typicalMiles": {
+        "American AAdvantage": 17500,
+        "Delta SkyMiles": 22500
+      },
+      "milesRange": "AA 12.5k-35k"
+    },
+    "SFO-RIC": {
+      "airlines": [
+        "Breeze (nonstop ~2x/wk, ~6h)",
+        "United (via DEN/ORD/IAD/EWR - largest schedule)",
+        "American (via CLT/DFW/PHX)",
+        "Delta (via ATL/SLC/MSP)",
+        "JetBlue (via JFK/BOS, limited)"
+      ],
+      "nonstop": true,
+      "typicalCashUSD": {
+        "min": 200,
+        "max": 600
+      },
+      "typicalMiles": {
+        "American AAdvantage": 17500,
+        "United MileagePlus": 20000,
+        "Delta SkyMiles": 22500,
+        "Atmos Rewards": 15000
+      },
+      "milesRange": "AA 12.5k-35k, UA 15k-35k, DL 15k-50k, Atmos 12.5k-30k on AA metal"
+    },
+    "SFO-ORF": {
+      "airlines": [
+        "United (via DEN/ORD/IAD - most connections)",
+        "American (via CLT/DFW/PHX)",
+        "Delta (via ATL/SLC/MSP)"
+      ],
+      "nonstop": false,
+      "typicalCashUSD": {
+        "min": 200,
+        "max": 600
+      },
+      "typicalMiles": {
+        "American AAdvantage": 17500,
+        "United MileagePlus": 20000,
+        "Delta SkyMiles": 22500
+      },
+      "milesRange": "AA 12.5k-35k, UA 15k-35k, DL 15k-50k"
+    },
+    "SFO-IAD": {
+      "airlines": [
+        "United (nonstop, up to ~9-10x/day)"
+      ],
+      "nonstop": true,
+      "typicalCashUSD": {
+        "min": 180,
+        "max": 650
+      },
+      "typicalMiles": {
+        "United MileagePlus": 17500
+      },
+      "milesRange": "UA 12.5k-35k; high frequency = best same-day rebooking odds",
+      "nonstopPrograms": [
+        "United MileagePlus"
+      ]
+    },
+    "SFO-DCA": {
+      "airlines": [
+        "Atmos/Alaska (verify nonstop)",
+        "United (via hub)",
+        "American (via hub)"
+      ],
+      "nonstop": false,
+      "typicalCashUSD": {
+        "min": 190,
+        "max": 550
+      },
+      "typicalMiles": {
+        "Atmos Rewards": 15000,
+        "American AAdvantage": 17500
+      },
+      "milesRange": "Atmos 12.5k-30k"
+    },
+    "SFO-BWI": {
+      "airlines": [
+        "Southwest (via MDW/DEN)",
+        "Spirit (via LAS - verify)"
+      ],
+      "nonstop": false,
+      "typicalCashUSD": {
+        "min": 130,
+        "max": 420
+      },
+      "typicalMiles": {
+        "Southwest Rapid Rewards": 18000
+      },
+      "milesRange": "WN fare-linked"
+    }
+  },
+  "milesPrograms": {
+    "American AAdvantage": {
+      "searchLink": "https://www.aa.com/booking/find-flights",
+      "notes": "Web specials often cheapest for transcon one-ways."
+    },
+    "United MileagePlus": {
+      "searchLink": "https://www.united.com/en/us/book-flight/united-award-travel",
+      "notes": "Dynamic pricing; check IAD nonstops from LAS/SFO."
+    },
+    "Delta SkyMiles": {
+      "searchLink": "https://www.delta.com/flightsearch/book-a-flight",
+      "notes": "Usually priciest domestic awards; check flash deals."
+    },
+    "Southwest Rapid Rewards": {
+      "searchLink": "https://www.southwest.com/air/booking/",
+      "notes": "Points track cash price; BWI and DCA are the useful east coast targets."
+    },
+    "Atmos Rewards": {
+      "searchLink": "https://www.alaskaair.com/planbook",
+      "notes": "Ex-Alaska/Hawaiian program; books American flights with a $20 partner fee - useful for LAS/SFO to CLT/DCA/RIC itineraries."
+    }
+  }
+}

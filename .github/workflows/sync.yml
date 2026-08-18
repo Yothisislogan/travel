@@ -1,0 +1,39 @@
+name: sync
+
+# On-request data refresh for the static dashboard. Trigger from the Actions
+# tab (Run workflow) or from the dashboard's Sync button (workflow_dispatch via
+# the GitHub API). Nothing runs on a schedule - sync stays on-request.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: gowild-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run providers sync
+        run: node src/cli.js sync
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          AMADEUS_CLIENT_ID: ${{ secrets.AMADEUS_CLIENT_ID }}
+          AMADEUS_CLIENT_SECRET: ${{ secrets.AMADEUS_CLIENT_SECRET }}
+          SEATS_AERO_API_KEY: ${{ secrets.SEATS_AERO_API_KEY }}
+      - name: Export dashboard data
+        run: node scripts/export-pages-data.js
+      - name: Commit refreshed data
+        run: |
+          git config user.name "gowild-sync"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/data.json
+          git diff --cached --quiet || git commit -m "sync: refresh dashboard data [skip ci]"
+          git push

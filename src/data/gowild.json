@@ -1,0 +1,44 @@
+{
+  "_comment": "GoWild! pass rules, researched 2026-08-17 from Frontier PR/news/community sources. Verify against your pass's current terms - the program changes every pass year.",
+  "asOf": "2026-08-17",
+  "bookingWindow": {
+    "domesticOpensDayBefore": true,
+    "domesticNote": "Domestic GoWild fares become bookable the day before departure (Eastern time).",
+    "internationalDaysBefore": 10,
+    "earlyBookingCharge": "During 2026 promo periods Frontier sells an Early Booking Charge (from $29, up to ~$99 on peak dates; pin to your pass's published terms) to book beyond the normal 1-day/10-day windows."
+  },
+  "fareFeesUSD": {
+    "nonstop": { "min": 15, "max": 25 },
+    "perExtraSegment": { "min": 4, "max": 10 },
+    "notes": "Base fare $0.01/segment + taxes/fees. The TSA September 11 fee ($5.60) applies per one-way trip, NOT per segment; extra segments add airport facility charges (~$4-10 each). So a domestic nonstop runs ~$15 and a one-stop ~$20-30. International runs ~$60-110+ per direction."
+  },
+  "peakDayCharge": "2026 change: blackout dates are no longer absolute - a Peak Day Charge (from $79, up to ~$159; pin to your pass's published terms) lets you fly on blackout dates.",
+  "blackoutDates": [
+    { "range": "2026-09-03/2026-09-04", "label": "Labor Day period" },
+    { "range": "2026-09-07/2026-09-07", "label": "Labor Day" },
+    { "range": "2026-10-08/2026-10-09", "label": "October peak" },
+    { "range": "2026-10-11/2026-10-12", "label": "Columbus Day period" },
+    { "range": "2026-11-24/2026-11-25", "label": "Thanksgiving" },
+    { "range": "2026-11-28/2026-11-30", "label": "Thanksgiving return" },
+    { "range": "2026-12-19/2026-12-24", "label": "Winter holidays" },
+    { "range": "2026-12-26/2026-12-31", "label": "Winter holidays" },
+    { "range": "2027-01-01/2027-01-03", "label": "New Year's 2027 (VERIFY - published list is calendar-2026 only)" },
+    { "range": "2027-01-15/2027-01-18", "label": "MLK weekend 2027 (VERIFY against your pass's current terms)" },
+    { "range": "2027-02-12/2027-02-15", "label": "Presidents Day 2027 (VERIFY against your pass's current terms)" }
+  ],
+  "blackoutNote": "Frontier's published blackout list covers calendar 2026; passes valid into 2027 (Fall & Winter through Feb 28 2027, Annual through Apr 30 2027) will get additional 2027 dates. The 2027 entries above are conservative guesses - verify against your pass terms.",
+  "inventoryReleaseNote": "GoWild seats for a date are community-reported to release around midnight Eastern the day before - unofficial and not guaranteed; same-day booking also works while inventory lasts.",
+  "connectionRules": "Connecting itineraries ARE allowed (published Frontier connect city pairs only), subject to GoWild seat availability on every segment; each segment is $0.01 + its taxes/fees. Returns are booked separately once their own window opens.",
+  "feesNotes": "Bags and seat assignments are NOT included - pay at booking or bring a free personal item only.",
+  "programNotes": [
+    "2026 GoWild Fall & Winter Pass launched Aug 4, 2026 at $199 intro, valid through Feb 28, 2027.",
+    "2026-27 Annual Pass early-access pricing $299-$349 (regular $599), pass year May 1, 2026 - Apr 30, 2027.",
+    "GoWild fares only render on flyfrontier.com when logged into a Frontier Miles account holding an active pass - no public fare filter exists."
+  ],
+  "searchLinks": {
+    "site": "https://www.flyfrontier.com/",
+    "flightSearch": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true",
+    "dateFormat": "MMM D, YYYY",
+    "notes": "The dd1 param wants a 'Aug 18, 2026'-style date (the agent formats this for you). Log in with the GoWild pass on your account, then GoWild fares appear as a fare option when available."
+  }
+}

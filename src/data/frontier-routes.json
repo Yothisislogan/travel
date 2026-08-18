@@ -1,0 +1,31 @@
+{
+  "_comment": "Frontier nonstop route map relevant to this trip, researched 2026-08-17 (press releases, news, schedule aggregators). Frontier's 2026 network is exceptionally volatile - re-verify every leg on flyfrontier.com before travel day.",
+  "asOf": "2026-08-17",
+  "freshnessWarning": "Frontier exited 10 airports (Feb 2026), added 38 routes backfilling Spirit's collapse (Jul 2026), then cut 20+ routes in Q3 2026. Days of week are as-launched and shift seasonally. Confirm in the Frontier app before relying on any leg.",
+  "routes": {
+    "RIC": ["DEN", "MCO"],
+    "ORF": ["ATL", "MCO"],
+    "LAS": ["SFO", "SJC", "OAK", "DEN", "ATL", "MCO", "PHL", "IAD", "CLE", "DFW", "DTW", "MCI", "BNA", "MSP", "IND", "MKE", "MEM", "BOI"],
+    "SFO": ["DEN", "LAS", "PHX", "SLC", "SAN", "LAX", "SNA", "ONT", "PDX", "DFW"],
+    "OAK": ["LAS"],
+    "SJC": ["DEN", "LAS", "LAX", "SAN", "PHX"],
+    "DEN": ["RIC", "ATL", "MCO", "PHL", "CLE"],
+    "MCO": ["RIC", "ORF", "IAD", "PHL", "CLE", "ATL", "TTN"]
+  },
+  "frequencies": {
+    "RIC-DEN": { "daysPerWeek": 2, "days": "Thu/Sun", "note": "launched Oct 2025" },
+    "RIC-MCO": { "daysPerWeek": 2, "days": "Thu/Sun", "note": "launched Apr 2026 as limited-time, still in schedule" },
+    "ORF-ATL": { "daysPerWeek": 3, "days": "~3x weekly" },
+    "LAS-IAD": { "daysPerWeek": 7, "days": "daily", "note": "daily since May 1, 2026 - best GoWild path back toward Virginia" },
+    "LAS-OAK": { "daysPerWeek": 7, "days": "11x weekly", "note": "starts Aug 20, 2026 (Frontier PR-confirmed)" }
+  },
+  "routeNotes": {
+    "RIC": "Only DEN + MCO, both ~2x weekly (Thu/Sun). RIC-ATL ended May 2026.",
+    "ORF": "ATL ~3x weekly + MCO. No DEN or LAS nonstop from ORF.",
+    "LAS": "Bay Area + connection-relevant subset of ~37 LAS routes. No BWI/DCA/PHF. RDU and ORD unconfirmed for 2026 (excluded). OAK-DEN also reported but not PR-verified (excluded).",
+    "connections": "Frontier only sells connections its system builds for published city pairs - never assume two GoWild segments combine; a misconnect on a 2x-weekly route can strand you for days. Prefer same-itinerary connections over self-built ones.",
+    "SFO": "All SFO routes are western - going east on GoWild from SFO means connecting in DEN (or backtracking via LAS).",
+    "SFO-ORF": "NO Frontier one-stop exists (SFO-MCO seasonal ended Aug 2026). Use SFO->DEN->RIC, go via LAS-IAD, or take another airline.",
+    "verify": "Frontier only sells published connecting city pairs - confirm connectability for your exact dates on flyfrontier.com."
+  }
+}

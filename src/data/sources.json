@@ -1,0 +1,47 @@
+{
+  "_comment": "Live data endpoints the sync engine tries, in order. Edit freely - endpoints for unofficial APIs change. {origin} {dest} {date} placeholders are substituted. If everything fails, the agent falls back to seed data + deep links.",
+  "frontier": {
+    "attempts": [
+      {
+        "name": "flyfrontier-flight-search-page",
+        "url": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true",
+        "kind": "html-probe",
+        "notes": "The sync engine now parses this page's embedded journeys JSON for per-flight GoWild fields (isGoWildFareEnabled, goWildFare, goWildFareSeatsRemaining) - visible without login. Bot protection may 403; the agent paces requests 2-4s and stops at the first block. See docs/API-OPTIONS.md."
+      }
+    ],
+    "deepLink": "https://booking.flyfrontier.com/Flight/InternalSelect?o1={origin}&d1={dest}&dd1={date}&ADT=1&mon=true",
+    "communityTrackers": [
+      {
+        "name": "GoWilder",
+        "url": "https://www.gowilder.net/",
+        "notes": "Hosted GoWild availability search - fastest way to see which flights show GoWild seats"
+      },
+      {
+        "name": "WildFares",
+        "url": "https://www.wildfares.com/",
+        "notes": "GoWild companion with maps, multi-hop routing, real-time availability"
+      }
+    ],
+    "officialApi": "developer.flyfrontier.com is NDC for accredited travel-trade partners only - no hobbyist access",
+    "dataFields": [
+      "isGoWildFareEnabled",
+      "goWildFare",
+      "goWildFareSeatsRemaining"
+    ]
+  },
+  "amtraker": {
+    "trains": "https://api-v3.amtraker.com/v3/trains",
+    "notes": "Free, no key. Live positions/status of all Amtrak trains (no fares)."
+  },
+  "flixbus": {
+    "attempts": [],
+    "deepLink": "https://shop.flixbus.com/search?departureCity={fromCity}&arrivalCity={toCity}&rideDate={date}"
+  },
+  "deepLinks": {
+    "googleFlights": "https://www.google.com/travel/flights?q=Flights%20from%20{origin}%20to%20{dest}%20on%20{date}%20one%20way",
+    "kayak": "https://www.kayak.com/flights/{origin}-{dest}/{date}?sort=bestflight_a",
+    "amtrak": "https://www.amtrak.com/tickets/departure.html?wdf_origin={origin}&wdf_destination={dest}&departdate={date}",
+    "greyhound": "https://www.greyhound.com",
+    "_amtrakNote": "Historical prefill pattern - Amtrak SPA deep links are not officially documented; if params stop prefilling, the page still opens the booking search."
+  }
+}
