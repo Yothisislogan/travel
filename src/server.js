@@ -4,7 +4,7 @@ import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ROOT, loadJSON, todayISO, addDaysISO } from './util.js';
-import { gowildOptions } from './providers/frontier.js';
+import { gowildOptions, checkGowildAvailability } from './providers/frontier.js';
 import { backupCashOptions } from './providers/flights.js';
 import { awardOptions } from './providers/awards.js';
 import { liveStatus } from './providers/amtrak.js';
@@ -42,6 +42,16 @@ export function startServer(port = 8787) {
         json(res, 200, gowildOptions(from, ['LAS'], date));
       } else if (url.pathname === '/api/hop') {
         json(res, 200, gowildOptions(['LAS'], ['SFO', 'OAK', 'SJC'], date));
+      } else if (url.pathname === '/api/gowild-live') {
+        // Server-side fetch of Frontier's own search page (no browser CORS
+        // limit here) - parses live GoWild fares + seats for one route/date.
+        const from = (q.get('from') || '').toUpperCase();
+        const to = (q.get('to') || '').toUpperCase();
+        if (!/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to)) {
+          json(res, 400, { error: 'from and to must be 3-letter airport codes' });
+        } else {
+          json(res, 200, await checkGowildAvailability(from, to, date));
+        }
       } else if (url.pathname === '/api/return') {
         json(res, 200, planReturn({
           from: (q.get('from') || 'SFO').toUpperCase(),

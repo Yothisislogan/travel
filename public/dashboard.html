@@ -12,6 +12,8 @@
 <style>
   /* local-dashboard extras on top of the shared system */
   h2 .fresh { font-size: 11px; color: var(--muted); font-weight: 400; font-family: var(--font-body); margin-left: auto; }
+  .live-btn { min-height: 0; padding: 2px 9px; font-size: 12px; vertical-align: 1px; }
+  .live-out:empty { display: none; }
 </style>
 </head>
 <body>
@@ -107,7 +109,9 @@ function gowildHTML(d) {
       + (p.via ? '' : ' <span class="tag">nonstop</span>')
       + (p.daysPerWeek && p.daysPerWeek < 7 ? ' <span class="tag warn" title="' + esc(p.frequencyNote || '') + '">' + esc((p.frequencyNote || 'not daily').split(' (')[0]) + '</span>' : '')
       + (p.operatesOnDate === false ? ' <span class="tag bad">no ' + esc(p.dayOfWeek) + ' service</span>' : '')
-      + '<div class="dim" style="margin-top:4px">~' + hrs(p.totalHours) + ' · est ' + money(p.estCostUSD) + ' taxes/fees · <a target="_blank" rel="noopener" href="' + esc(p.searchLink) + '">check fares ↗</a></div>';
+      + '<div class="dim" style="margin-top:4px">~' + hrs(p.totalHours) + ' · est ' + money(p.estCostUSD) + ' taxes/fees · <a target="_blank" rel="noopener" href="' + esc(p.searchLink) + '">check fares ↗</a>'
+      + ' · <button class="ghost live-btn" data-from="' + esc(p.from) + '" data-to="' + esc(p.to) + '">↻ live seats</button></div>'
+      + '<div class="live-out"></div>';
     if (p.live) {
       if (!p.live.gowildFlights) h += '<div class="leg"><span class="tag live">live</span> no GoWild seats showing right now</div>';
       for (const f of p.live.flights) {
@@ -219,6 +223,30 @@ $('syncAll').addEventListener('click', async () => {
   try { await fetch('/api/sync?date=' + $('date').value, { method: 'POST' }); toast('Synced all sections'); await refreshAll(); }
   catch (e) { toast('Sync failed: ' + e.message); }
   $('syncAll').disabled = false;
+});
+// On-demand live GoWild seat check - the local server fetches Frontier for us
+// (no browser CORS limit server-side), so this works right in the app.
+function renderLive(d) {
+  if (d.status === 'blocked') return '<div class="leg warn">Frontier blocked this request (bot protection). It usually works from a home/residential network - or use the check-fares link + the GoWild trackers.</div>';
+  if (d.status === 'unreachable') return '<div class="leg bad">Couldn\'t reach Frontier (offline or blocked network).</div>';
+  const flights = d.flights || [];
+  const gw = flights.filter((f) => f.gowildEnabled);
+  if (!flights.length) return '<div class="leg dim">No flight data returned - the search may need you logged in to Frontier, or the page changed.</div>';
+  if (!gw.length) return '<div class="leg dim">Reached Frontier - no GoWild seats showing on ' + flights.length + ' flight(s) right now.</div>';
+  return gw.map((f) => '<div class="leg"><span class="tag live">live</span> ' + (f.flightNumber ? '#' + esc(f.flightNumber) + ' ' : '') + esc(f.departure || '')
+    + ' · $' + esc(f.goWildFare ?? '?') + ' · ' + (f.goWildSeatsRemaining != null ? esc(f.goWildSeatsRemaining) + ' GoWild seat(s) left' : 'GoWild available') + '</div>').join('');
+}
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.live-btn');
+  if (!btn) return;
+  const out = btn.closest('.row').querySelector('.live-out');
+  btn.disabled = true;
+  if (out) out.innerHTML = '<div class="leg dim">checking Frontier live…</div>';
+  try {
+    const d = await api('/api/gowild-live?from=' + encodeURIComponent(btn.dataset.from) + '&to=' + encodeURIComponent(btn.dataset.to) + '&date=' + encodeURIComponent($('date').value));
+    if (out) out.innerHTML = renderLive(d);
+  } catch (err) { if (out) out.innerHTML = '<div class="leg bad">live check failed: ' + esc(err.message) + '</div>'; }
+  btn.disabled = false;
 });
 $('retGo').addEventListener('click', () => guard(loadReturn, 'returnBody', 'return plans'));
 for (const id of ['date', 'obFrom', 'retFrom', 'retSort', 'retTo', 'buFrom']) $(id).addEventListener('change', refreshAll);
