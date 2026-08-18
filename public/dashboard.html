@@ -176,6 +176,8 @@ async function loadReturn() {
       h += '<div class="leg">' + tag(leg.mode) + route(leg.from, null, leg.to) + ' <span class="dim">· ' + hrs(leg.hours) + ' · ' + money(leg.costUSD)
         + ' · ' + esc(leg.operator || '') + '</span>'
         + (leg.dataStatus === 'live' ? ' <span class="tag live">live</span>' : '')
+          + (leg.timeStatus === 'live' && leg.delayMinutes > 0 ? ' <span class="tag warn">+' + esc(leg.delayMinutes) + 'm late</span>' : '')
+          + (leg.timeStatus === 'live' && leg.delayMinutes <= 0 ? ' <span class="tag live">on time</span>' : '')
         + (leg.seatsRemaining != null ? ' <span class="tag">' + esc(leg.seatsRemaining) + ' seats</span>' : '')
         + (leg.bookLink ? ' · <a target="_blank" rel="noopener" href="' + esc(leg.bookLink) + '">book ↗</a>' : '') + '</div>';
     }

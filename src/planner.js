@@ -6,7 +6,7 @@ import { loadJSON, readSnapshot, haversineMiles, estimateFlightHours, costMidpoi
 import { routeMap, gowildRules, searchLink, frequencyOf } from './providers/frontier.js';
 import { deepLinks } from './providers/flights.js';
 import { busLink, liveFare } from './providers/bus.js';
-import { amtrakLink } from './providers/amtrak.js';
+import { amtrakLink, liveDelay } from './providers/amtrak.js';
 
 const airports = loadJSON('src/data/airports.json');
 const ground = loadJSON('src/data/ground.json');
@@ -132,7 +132,26 @@ export function buildEdges({ date, allowModes }) {
   // Trains and buses (directional as encoded - eastbound legs).
   if (allow.has('train')) {
     for (const t of ground.trainLegs) {
-      edges.push({ mode: 'train', from: t.from, to: t.to, operator: t.operator, hours: t.hours, costUSD: t.costUSD, dataStatus: 'estimate', bookLink: amtrakLink(t.from, t.to, date), notes: t.notes, daysPerWeek: t.daysPerWeek });
+      // Amtrak long-distance trains routinely run late; when live status shows
+      // a delay on this route, add it to the leg so the ranking is realistic.
+      const d = liveDelay(t.id);
+      const delayH = d && Number.isFinite(d.medianDelayMinutes) ? d.medianDelayMinutes / 60 : 0;
+      edges.push({
+        mode: 'train',
+        from: t.from,
+        to: t.to,
+        operator: delayH > 0.25 ? `${t.operator} (running ~${Math.round(delayH * 60)}m late)` : t.operator,
+        hours: +(t.hours + Math.max(0, delayH)).toFixed(2),
+        scheduledHours: t.hours,
+        delayMinutes: d?.medianDelayMinutes ?? null,
+        costUSD: t.costUSD,
+        // The TIME is live even though the FARE is still an estimate.
+        dataStatus: 'estimate',
+        timeStatus: d ? 'live' : 'scheduled',
+        bookLink: amtrakLink(t.from, t.to, date),
+        notes: t.notes,
+        daysPerWeek: t.daysPerWeek,
+      });
     }
   }
   if (allow.has('bus')) {

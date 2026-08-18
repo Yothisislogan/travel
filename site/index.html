@@ -204,6 +204,8 @@ function render() {
         rh += '<div class="leg">' + tag(leg.mode) + route(leg.from, null, leg.to) + ' <span class="dim">· ' + hrs(leg.hours) + ' · ' + money(leg.costUSD)
           + ' · ' + esc(leg.operator || '') + '</span>'
           + (leg.dataStatus === 'live' ? ' <span class="tag live">live</span>' : '')
+          + (leg.timeStatus === 'live' && leg.delayMinutes > 0 ? ' <span class="tag warn">+' + esc(leg.delayMinutes) + 'm late</span>' : '')
+          + (leg.timeStatus === 'live' && leg.delayMinutes <= 0 ? ' <span class="tag live">on time</span>' : '')
           + (leg.seatsRemaining != null ? ' <span class="tag">' + esc(leg.seatsRemaining) + ' seats</span>' : '')
           + (leg.bookLink ? ' <span class="dim">· <a target="_blank" rel="noopener" href="' + esc(leg.bookLink) + '">book ↗</a></span>' : '') + '</div>';
       }
@@ -267,9 +269,25 @@ function hotelsHTML(o) {
 }
 
 function renderAmtrak(trains) {
-  $('amtrakBody').innerHTML = trains.length
-    ? trains.slice(0, 10).map((t) => '<div style="margin:4px 0"><b>' + esc(t.route) + '</b> #' + esc(t.trainNum) + ' <span class="dim">' + esc(t.heading || '') + ' · ' + esc(t.status || '?') + (t.minutesLate ? ' (' + esc(t.minutesLate) + ')' : '') + '</span></div>').join('')
-    : '<div class="empty">No live train data — tap ↻ to fetch Amtraker directly.</div>';
+  if (!trains.length) {
+    $('amtrakBody').innerHTML = '<div class="empty">No live train data — tap ↻ to fetch Amtraker directly.</div>';
+    return;
+  }
+  // Late trains first - that is what changes your plan.
+  const sorted = [...trains].sort((a, b) => (b.delayMinutes ?? -1) - (a.delayMinutes ?? -1));
+  $('amtrakBody').innerHTML = sorted.slice(0, 10).map((t) => {
+    const d = t.delayMinutes;
+    const badge = d == null ? '<span class="tag">no status</span>'
+      : d >= 15 ? '<span class="tag warn">' + esc(d) + 'm late</span>'
+      : d > 0 ? '<span class="tag">' + esc(d) + 'm late</span>'
+      : '<span class="tag live">on time</span>';
+    const stops = (t.stops || []).filter((s) => s.estimated).slice(0, 3)
+      .map((s) => esc(s.code) + ' ' + new Date(s.estimated).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+        + (s.delayMinutes > 0 ? ' (+' + esc(s.delayMinutes) + 'm)' : '')).join(' · ');
+    return '<div style="margin:6px 0"><b>' + esc(t.route) + '</b> #' + esc(t.trainNum) + ' ' + badge
+      + '<div class="dim">' + esc(t.heading || '') + (t.lastStation ? ' · at ' + esc(t.lastStation) : '')
+      + (stops ? '<br>ETA: ' + stops : '') + '</div></div>';
+  }).join('');
 }
 
 // Live Amtraker fetch straight from the browser (their API allows cross-origin).
@@ -280,10 +298,38 @@ $('amtrakBtn').addEventListener('click', async () => {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const all = await r.json();
     const want = /zephyr|southwest chief|cardinal|capitol limited|floridian|coast starlight|northeast regional/i;
+    const WATCH = ['EMY', 'LAX', 'CHI', 'WAS', 'CVS', 'RVR', 'NFK'];
+    // Same delay parsing as the server: "2 hours, 5 minutes late" -> 125.
+    const delayFrom = (s) => {
+      if (s == null) return null;
+      const x = String(s).toLowerCase();
+      if (/on\s*time/.test(x)) return 0;
+      const h = /(\d+)\s*hour/.exec(x), m = /(\d+)\s*min/.exec(x);
+      if (!h && !m) return null;
+      const mins = (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0);
+      return /early/.test(x) ? -mins : mins;
+    };
     const trains = [];
     for (const list of Object.values(all)) {
       for (const t of Array.isArray(list) ? list : []) {
-        if (want.test(t.routeName ?? '')) trains.push({ route: t.routeName, trainNum: t.trainNum, heading: t.heading, status: t.trainState, minutesLate: typeof t.trainTimely === 'string' ? t.trainTimely : null });
+        if (!want.test(t.routeName ?? '')) continue;
+        const stations = Array.isArray(t.stations) ? t.stations : [];
+        let delayMinutes = delayFrom(t.trainTimely ?? t.statusMsg);
+        if (delayMinutes == null) {
+          const deltas = stations.map((s) => {
+            const a = Date.parse(s.schArr ?? s.schDep ?? ''), b = Date.parse(s.arr ?? s.dep ?? '');
+            return Number.isFinite(a) && Number.isFinite(b) ? Math.round((b - a) / 60000) : null;
+          }).filter((n) => n != null);
+          delayMinutes = deltas.length ? Math.max(...deltas) : null;
+        }
+        trains.push({
+          route: t.routeName, trainNum: t.trainNum, heading: t.heading, status: t.trainState,
+          delayMinutes, lastStation: t.eventName ?? null,
+          stops: stations.filter((s) => WATCH.includes(s.code)).map((s) => ({
+            code: s.code, estimated: s.arr ?? s.dep ?? null,
+            delayMinutes: delayFrom(s.arrCmnt ?? s.depCmnt),
+          })),
+        });
       }
     }
     renderAmtrak(trains);
