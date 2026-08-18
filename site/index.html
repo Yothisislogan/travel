@@ -65,7 +65,7 @@
   <section id="secBookmarklet">
     <h2>GoWild seat-check bookmarklet</h2>
     <p class="dim">Live GoWild seat counts can't be fetched by a web page (browser cross-origin rules), but a bookmarklet runs <i>on Frontier's own page</i> where the data lives.</p>
-    <p><b>Desktop:</b> drag this to your bookmarks bar. <b>Mobile / can't drag:</b> tap <b>Copy code</b> and paste it as the URL of a new bookmark.</p>
+    <p><b>Desktop:</b> drag the green button to your bookmarks bar. <b>Phone:</b> tap it to copy, then make a new bookmark and paste it as the <i>URL</i> (not the name).</p>
     <p><a class="bookmarklet" id="bmLink" href="#" draggable="true">🎯 GoWild seats</a> <button id="bmCopy" class="ghost">Copy code</button></p>
     <p class="dim">Then open any prefilled &ldquo;check fares&rdquo; link above and, on Frontier's results page, tap the bookmark — it overlays every flight's GoWild fare and seats remaining.</p>
     <p class="dim">Why not a button here? A web page can't read Frontier's data across origins (browser security) — the bookmarklet runs <i>on</i> Frontier's page to get around that. <b>On a computer</b>, the local dashboard (<code>node src/cli.js dashboard</code>) has a real <b>↻ live seats</b> button that fetches Frontier for you — no bookmarklet needed.</p>
@@ -398,15 +398,50 @@ function gowildBookmarklet() {
   }
   function show(fl) {
     var old = document.getElementById('gwseats'); if (old) old.remove();
-    var el = document.createElement('div'); el.id = 'gwseats';
-    el.style.cssText = 'position:fixed;top:12px;right:12px;z-index:99999;background:#151823;color:#edf0f7;border:2px solid #4ade80;border-radius:12px;padding:14px 18px;font:14px/1.55 system-ui,sans-serif;max-height:72vh;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,.55)';
+    // CSP-safe: build with DOM APIs and set style properties one by one.
+    // style.cssText, style="" attributes and inline onclick are all blocked by
+    // a strict Content-Security-Policy, which Frontier's site sends.
+    var el = document.createElement('div');
+    el.id = 'gwseats';
+    var s = el.style;
+    s.position = 'fixed'; s.top = '12px'; s.right = '12px'; s.zIndex = '2147483647';
+    s.background = '#151823'; s.color = '#edf0f7'; s.border = '2px solid #4ade80';
+    s.borderRadius = '12px'; s.padding = '14px 18px'; s.maxWidth = '380px';
+    s.fontFamily = 'system-ui, sans-serif'; s.fontSize = '14px'; s.lineHeight = '1.55';
+    s.maxHeight = '72vh'; s.overflow = 'auto'; s.boxShadow = '0 8px 30px rgba(0,0,0,.55)';
+
+    var head = document.createElement('div');
+    var title = document.createElement('b');
+    title.textContent = 'GoWild seats';
+    title.style.color = '#4ade80'; title.style.fontSize = '15px';
+    var close = document.createElement('span');
+    close.textContent = '\u2715';
+    close.style.cssFloat = 'right'; close.style.cursor = 'pointer';
+    close.style.color = '#aeb7cc'; close.style.marginLeft = '14px';
+    close.addEventListener('click', function () { el.remove(); });
+    head.appendChild(title); head.appendChild(close);
+    el.appendChild(head);
+
     var gw = fl.filter(function (f) { return f.gw; });
-    var h = '<b style="color:#4ade80;font-size:15px">GoWild seats</b> <a style="float:right;cursor:pointer;color:#aeb7cc;margin-left:14px" onclick="this.parentNode.remove()">✕</a><br>';
-    if (!fl.length) h += 'No flight data on this page — run a flight search first.';
-    else if (!gw.length) h += 'No GoWild fares on the ' + fl.length + ' flight(s) shown.';
-    else gw.forEach(function (f) { h += '<div style="margin-top:6px">#' + (f.n || '?') + ' ' + (f.d || '') + ' — $' + (f.p == null ? '?' : f.p) + ' — <b>' + (f.s == null ? 'available' : f.s + ' seat(s) left') + '</b></div>'; });
-    el.innerHTML = h; document.body.appendChild(el);
+    var body = document.createElement('div');
+    body.style.marginTop = '6px';
+    if (!fl.length) {
+      body.textContent = 'No flight data on this page - open a Frontier flight-results page and run the search first.';
+    } else if (!gw.length) {
+      body.textContent = 'No GoWild fares on the ' + fl.length + ' flight(s) shown.';
+    } else {
+      gw.forEach(function (f) {
+        var row = document.createElement('div');
+        row.style.marginTop = '6px';
+        row.textContent = '#' + (f.n || '?') + '  ' + (f.d || '') + '  $' + (f.p == null ? '?' : f.p)
+          + '  \u00b7  ' + (f.s == null ? 'available' : f.s + ' seat(s) left');
+        body.appendChild(row);
+      });
+    }
+    el.appendChild(body);
+    document.body.appendChild(el);
   }
+
   var fl = parse(document.documentElement.innerHTML);
   if (fl.length) { show(fl); }
   else { fetch(location.href, { credentials: 'include' }).then(function (r) { return r.text(); }).then(function (t) { show(parse(t)); }).catch(function () { show([]); }); }
@@ -414,17 +449,19 @@ function gowildBookmarklet() {
 const BOOKMARKLET_CODE = 'javascript:(' + encodeURIComponent(gowildBookmarklet.toString()) + ')()';
 $('bmLink').href = BOOKMARKLET_CODE;
 // Clicking it here (rather than on Frontier) can't work — explain instead of doing nothing.
-$('bmLink').addEventListener('click', (e) => {
-  e.preventDefault();
-  toast('This is a bookmarklet — drag it to your bookmarks bar, or tap "Copy code" and paste it as a new bookmark. Then run it on Frontier\'s flight-results page.');
-});
-$('bmCopy').addEventListener('click', async () => {
+async function copyBookmarklet(viaButton) {
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(BOOKMARKLET_CODE);
     else { const t = document.createElement('textarea'); t.value = BOOKMARKLET_CODE; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
-    toast('Bookmarklet copied — create a new bookmark and paste this as its URL/address.');
-  } catch (e) { toast('Copy failed — long-press the green button and choose Copy Link instead.'); }
-});
+    toast('Copied. Now: create a new bookmark, paste this as its URL/address, then open a Frontier results page and tap that bookmark.');
+  } catch (e) {
+    toast(viaButton ? 'Copy failed — long-press the green button and choose "Copy Link" instead.' : 'Copy failed — use the Copy code button.');
+  }
+}
+// Tapping it here can't run it (it must run ON Frontier's page), so a tap
+// copies it instead of doing nothing.
+$('bmLink').addEventListener('click', (e) => { e.preventDefault(); copyBookmarklet(false); });
+$('bmCopy').addEventListener('click', () => copyBookmarklet(true));
 
 for (const id of ['obDate', 'hopDate', 'retFrom', 'retSort', 'retDate', 'buFrom', 'buDate', 'hoCity']) $(id).addEventListener('change', render);
 
