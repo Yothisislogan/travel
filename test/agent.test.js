@@ -139,6 +139,56 @@ test('transfer buffers', () => {
   assert.equal(transferBuffer('flight', 'train'), 1.5);
 });
 
+test('live flight prices only count for the date they were searched', async () => {
+  const { writeSection, readSnapshot } = await import('../src/util.js');
+  const before = readSnapshot().sections.flights ?? null;
+  try {
+    writeSection('flights', {
+      status: 'live',
+      data: { searchDate: '2026-09-05', offers: { 'SFO-IAD': { priceUSD: 199, carrier: 'UA', durationHours: 5.5, stops: 0 } } },
+      notes: 'test fixture',
+    });
+    const matching = buildEdges({ date: '2026-09-05', allowModes: ['flight'] }).find((e) => e.from === 'SFO' && e.to === 'IAD');
+    assert.equal(matching.dataStatus, 'live', 'same date -> live');
+    assert.equal(matching.costUSD.min, 199);
+    const otherDay = buildEdges({ date: '2026-09-09', allowModes: ['flight'] }).find((e) => e.from === 'SFO' && e.to === 'IAD');
+    assert.equal(otherDay.dataStatus, 'estimate', 'different date must NOT reuse that price as live');
+    assert.notEqual(otherDay.costUSD.min, 199);
+  } finally {
+    writeSection('flights', before ?? { status: 'seed', data: {}, notes: 'restored' });
+  }
+});
+
+test('live GoWild fares from the Frontier check flow into planner legs', async () => {
+  const { writeSection, readSnapshot } = await import('../src/util.js');
+  const before = readSnapshot().sections.frontier ?? null;
+  try {
+    writeSection('frontier', {
+      status: 'live',
+      data: {
+        checklist: [{
+          pair: 'LAS-SFO', date: '2026-09-05', status: 'live',
+          flights: [
+            { gowildEnabled: true, goWildFare: 21.4, goWildSeatsRemaining: 3 },
+            { gowildEnabled: true, goWildFare: 18.9, goWildSeatsRemaining: 1 },
+            { gowildEnabled: false, goWildFare: null },
+          ],
+        }],
+      },
+      notes: 'test fixture',
+    });
+    const e = buildEdges({ date: '2026-09-05', allowModes: ['gowild'] }).find((x) => x.from === 'LAS' && x.to === 'SFO');
+    assert.equal(e.dataStatus, 'live');
+    assert.equal(e.costUSD.min, 18.9, 'uses the cheapest live GoWild fare');
+    assert.equal(e.seatsRemaining, 3);
+    // Reverse direction was not checked live -> stays an estimate.
+    const rev = buildEdges({ date: '2026-09-05', allowModes: ['gowild'] }).find((x) => x.from === 'SFO' && x.to === 'LAS');
+    assert.equal(rev.dataStatus, 'estimate');
+  } finally {
+    writeSection('frontier', before ?? { status: 'seed', data: {}, notes: 'restored' });
+  }
+});
+
 test('buildEdges respects allowModes', () => {
   const only = buildEdges({ date: '2026-09-01', allowModes: ['train'] });
   assert.ok(only.length > 0);

@@ -39,8 +39,20 @@ function flightHours(from, to) {
 export function buildEdges({ date, allowModes }) {
   const edges = [];
   const allow = new Set(allowModes ?? config.return.allowModes);
-  const snapFlights = readSnapshot().sections.flights;
-  const liveOffers = snapFlights?.status === 'live' ? snapFlights.data?.offers ?? {} : {};
+  const snap = readSnapshot();
+  const snapFlights = snap.sections.flights;
+  // Only treat synced prices as live for the date they were actually searched -
+  // a price fetched for another day is an estimate, not this itinerary's price.
+  const liveOffers = snapFlights?.status === 'live' && snapFlights.data?.searchDate === date
+    ? snapFlights.data?.offers ?? {}
+    : {};
+  // Live GoWild fares captured by the Frontier check, keyed pair+date.
+  const gowildLive = {};
+  for (const c of snap.sections.frontier?.data?.checklist ?? []) {
+    if (c.status !== 'live' || c.date !== date) continue;
+    const fares = (c.flights ?? []).filter((f) => f.gowildEnabled && f.goWildFare != null).map((f) => +f.goWildFare);
+    if (fares.length) gowildLive[c.pair] = { fare: Math.min(...fares), seats: (c.flights ?? []).find((f) => f.gowildEnabled)?.goWildSeatsRemaining ?? null };
+  }
 
   // GoWild flight edges: every nonstop in the route map, both directions.
   if (allow.has('gowild')) {
@@ -55,15 +67,17 @@ export function buildEdges({ date, allowModes }) {
           if (seen.has(key) || !place(a) || !place(b)) continue;
           seen.add(key);
           const freq = frequencyOf(a, b);
+          const live = gowildLive[`${a}-${b}`];
           edges.push({
             mode: 'gowild',
             from: a,
             to: b,
             operator: freq?.days ? `Frontier GoWild (${freq.days})` : 'Frontier (GoWild pass)',
             hours: flightHours(a, b),
-            costUSD: { min: seg.min, max: seg.max },
+            costUSD: live ? { min: live.fare, max: live.fare } : { min: seg.min, max: seg.max },
             daysPerWeek: freq?.daysPerWeek,
-            dataStatus: 'estimate',
+            dataStatus: live ? 'live' : 'estimate',
+            seatsRemaining: live?.seats ?? null,
             bookLink: searchLink(a, b, date),
             notes: 'Bookable day before departure; availability capacity-controlled.',
           });
