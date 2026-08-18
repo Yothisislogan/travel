@@ -75,6 +75,16 @@ The planner builds a multimodal graph - GoWild nonstops (both directions of the 
 - `src/data/ground.json` - train/bus legs, durations, fares.
 - `src/data/sources.json` - live endpoints and deep-link templates (editable without touching code).
 
+## Phone kit: serverless dashboard on GitHub Pages
+
+For mid-trip use with no computer and no server, the repo also ships a **static dashboard** (`site/index.html`) plus two GitHub Actions:
+
+1. **Enable Pages once**: repo Settings → Pages → Source: **GitHub Actions**. The `pages` workflow deploys `site/` and gives you a URL that works on your phone.
+2. **Sync on request**: the `sync` workflow runs the real providers on GitHub's machines (put SERPAPI_KEY etc. in repo → Settings → Secrets → Actions) and commits a fresh `site/data.json`. Trigger it from the Actions tab, or straight from the dashboard's **Sync** button (paste a fine-grained token with Actions write access once; it stays in your browser's localStorage).
+3. **Live GoWild seats in the browser**: web pages can't fetch Frontier cross-origin (and GitHub's IPs get bot-blocked), so the dashboard includes a **bookmarklet** - tap it while on any prefilled Frontier search page and it overlays each flight's GoWild fare and seats remaining, read from the page you're already on, logged in, from your own IP.
+
+The static page renders precomputed views (outbound/hop for today+tomorrow, return plans from SFO/LAS both sorts, backup plans) and fetches the freshest `data.json` from `raw.githubusercontent.com`, so a sync updates the page without a redeploy. Amtrak live status also refreshes directly in the browser (Amtraker's API allows it). If the dashboard moves to a different branch or fork, update the constants at the top of `site/index.html`.
+
 ## Tests
 
 ```bash
