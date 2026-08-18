@@ -58,6 +58,25 @@ Amtrak publishes a GTFS schedule feed with **no fare data at all** (no `fare_att
 
 The only endpoint that returns a real WAS→RVR price is Amtrak's own booking backend, which sits behind Akamai Bot Manager and requires replaying a browser session's cookies — and Amtrak's Terms of Use explicitly prohibit automated retrieval. **This app deliberately does not do that.** Train legs show researched fare ranges plus a prefilled booking link, and that's the honest ceiling for rail.
 
+## Amtraker v3 field notes (verified against the server source, Aug 2026)
+
+- `GET /v3/trains` returns an object keyed by train number; each value is an **array** of train objects (a route can have several instances running at once — distinguish by `trainID`, e.g. `6-14`).
+- **`trainTimely`, `arrCmnt` and `depCmnt` are deprecated and always empty strings.** Parsing them for delay silently yields nothing.
+- Authoritative delay, matching the API's own icon-colour math:
+  `minutesLate = (Date.parse(arr || dep) - Date.parse(schArr || schDep)) / 60000`.
+  Use `||`, not `??` — these fields are `""` rather than `null`.
+- Timestamps are ISO-8601 with a station-local UTC offset, no milliseconds, no `Z` (e.g. `2026-09-07T14:50:00-05:00`), so `Date.parse` is timezone-safe.
+- `arr`/`dep` are dual-purpose: an ETA while `status` is `Enroute`, the posted actual once `Station`/`Departed`, and the schedule for `Predeparture` trains (so a not-yet-departed train correctly reports zero delay).
+- Blocked IPs are served a **poisoned payload** — a fake train `9997` / "Error Train" — instead of an HTTP error, so filter it.
+- Every response sends `Access-Control-Allow-Origin: *`, but there is **no OPTIONS handler**, so browser requests must stay "simple": plain GET, no custom headers. (The static dashboard's in-browser refresh does exactly that.)
+- There is also an undocumented per-station board: `GET /v3/stations/expanded/{code}`.
+
+## Amtrak fares: how the estimates are modelled
+
+No public fare API exists, so ranges in `ground.json` model Amtrak's bucket system instead of guessing from distance. Inventory opens ~11 months out at the lowest bucket and ratchets up as each sells out. Booking **0–7 days out almost always lands in the top buckets**: roughly **2.5–3x** the low bucket on short NEC pairs (WAS→RVR ~$26–31 low vs ~$70–95 walk-up) and **1.6–2.5x** on long-distance coach (EMY→CHI ~$210 low vs ~$306–640). Since 2026 the old Saver/Value/Flexible tiers collapsed into Value/Flex with more low-end buckets, so prices now move in smaller, more frequent steps.
+
+**USA Rail Pass** ($499, 10 segments, 30 days, coach only): a connection burns a segment, so a transcon return via Chicago costs ~3 segments — about $500 for what point-to-point prices at ~$330–650. Not worth it for this single trip; it only pays off if you'd take many separate rides.
+
 ## SerpAPI quota note
 
 `departure_id`/`arrival_id` accept comma-separated airport codes and the whole multi-airport query bills as **one** search. The flights sync uses this: all 11 markets are priced in a single search instead of 11, so a free-tier month affords roughly 11x more syncs. Each returned itinerary names its own airports, so results still map back to individual markets.

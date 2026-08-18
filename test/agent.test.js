@@ -298,35 +298,52 @@ test('parseDelayMinutes reads Amtrak lateness prose', async () => {
   assert.equal(parseDelayMinutes('unknown'), null);
 });
 
-test('parseAmtrakTrains extracts delays and ETAs at watched stations', async () => {
+test('parseAmtrakTrains uses timestamps (not the deprecated prose fields) for delay', async () => {
   const { parseAmtrakTrains, delaysByLeg } = await import('../src/providers/amtrak.js');
+  const regional = (num, schedISO, actualISO) => ({
+    routeName: 'Northeast Regional', trainNum: num, trainTimely: '', statusMsg: '',
+    stations: [{ code: 'WAS', schArr: schedISO, arr: actualISO, arrCmnt: '', depCmnt: '', status: 'Enroute' }],
+  });
   const payload = {
+    // Amtraker v3 always sends trainTimely/arrCmnt as "" - delay must come from
+    // (estimated|actual) - scheduled, and "" must not defeat the fallback.
     6: [{
       routeName: 'California Zephyr', trainNum: '6', heading: 'E', trainState: 'Active',
-      trainTimely: '2 hours, 30 minutes late',
+      trainTimely: '', statusMsg: '',
       stations: [
-        { code: 'EMY', schArr: '2026-09-05T09:10:00-07:00', arr: '2026-09-05T09:10:00-07:00', status: 'Departed' },
-        { code: 'CHI', schArr: '2026-09-07T14:50:00-05:00', arr: '2026-09-07T17:20:00-05:00', status: 'Enroute' },
+        { code: 'EMY', schArr: '', schDep: '2026-09-05T09:10:00-07:00', dep: '2026-09-05T09:10:00-07:00', status: 'Departed' },
+        { code: 'CHI', schArr: '2026-09-07T14:50:00-05:00', arr: '2026-09-07T17:20:00-05:00', arrCmnt: '', status: 'Enroute' },
       ],
     }],
-    // Two Regionals: median should be used, not the worst.
-    82: [{ routeName: 'Northeast Regional', trainNum: '82', trainTimely: '10 minutes late', stations: [] }],
-    84: [{ routeName: 'Northeast Regional', trainNum: '84', trainTimely: '90 minutes late', stations: [] }],
-    9: [{ routeName: 'Some Other Train', trainNum: '9', trainTimely: 'On Time', stations: [] }],
+    82: [regional('82', '2026-09-05T12:00:00-04:00', '2026-09-05T12:10:00-04:00')], // +10
+    84: [regional('84', '2026-09-05T15:00:00-04:00', '2026-09-05T16:30:00-04:00')], // +90
+    9: [{ routeName: 'Some Other Train', trainNum: '9', stations: [] }],
+    9997: [{ routeName: 'Error Train', trainNum: '9997', stations: [] }],
   };
   const trains = parseAmtrakTrains(payload, ['CHI', 'WAS']);
-  assert.equal(trains.length, 3, 'only relevant routes kept');
+  assert.equal(trains.length, 3, 'irrelevant routes and the poisoned Error Train are dropped');
   const zephyr = trains.find((t) => t.legId === 'zephyr');
-  assert.equal(zephyr.delayMinutes, 150);
-  assert.equal(zephyr.stops.length, 1, 'only watched stations kept');
+  assert.equal(zephyr.delayMinutes, 150, 'delay from the next stop not yet departed');
+  assert.equal(zephyr.stops.length, 1);
   assert.equal(zephyr.stops[0].code, 'CHI');
-  assert.equal(zephyr.stops[0].delayMinutes, 150, 'derived from sched vs estimated');
+  assert.equal(zephyr.stops[0].delayMinutes, 150);
 
   const delays = delaysByLeg(trains);
   assert.equal(delays.zephyr.medianDelayMinutes, 150);
   assert.equal(delays.regional.medianDelayMinutes, 50, 'median of 10 and 90');
   assert.equal(delays.regional.worstDelayMinutes, 90);
   assert.equal(delays.regional.trainsTracked, 2);
+});
+
+test('stationDelay handles empty-string fields (|| not ??)', async () => {
+  const { stationDelay, isPoisonedTrain } = await import('../src/providers/amtrak.js');
+  // schArr empty must fall through to schDep, and arr empty to dep.
+  assert.equal(stationDelay({ schArr: '', schDep: '2026-09-05T10:00:00-04:00', arr: '', dep: '2026-09-05T10:20:00-04:00' }), 20);
+  assert.equal(stationDelay({ schArr: '2026-09-05T10:00:00-04:00', arr: '2026-09-05T09:45:00-04:00' }), -15, 'early is negative');
+  assert.equal(stationDelay({}), null);
+  assert.ok(isPoisonedTrain({ trainNum: '9997' }));
+  assert.ok(isPoisonedTrain({ routeName: 'Error Train' }));
+  assert.ok(!isPoisonedTrain({ trainNum: '6', routeName: 'California Zephyr' }));
 });
 
 test('live Amtrak delays lengthen planner train legs', async () => {

@@ -313,21 +313,24 @@ $('amtrakBtn').addEventListener('click', async () => {
     for (const list of Object.values(all)) {
       for (const t of Array.isArray(list) ? list : []) {
         if (!want.test(t.routeName ?? '')) continue;
+        if (String(t.trainNum) === '9997' || /error train/i.test(t.routeName || '')) continue;
         const stations = Array.isArray(t.stations) ? t.stations : [];
-        let delayMinutes = delayFrom(t.trainTimely ?? t.statusMsg);
-        if (delayMinutes == null) {
-          const deltas = stations.map((s) => {
-            const a = Date.parse(s.schArr ?? s.schDep ?? ''), b = Date.parse(s.arr ?? s.dep ?? '');
-            return Number.isFinite(a) && Number.isFinite(b) ? Math.round((b - a) / 60000) : null;
-          }).filter((n) => n != null);
-          delayMinutes = deltas.length ? Math.max(...deltas) : null;
-        }
+        // Authoritative delay = (estimated|actual) - scheduled at the next stop
+        // not yet departed. trainTimely/arrCmnt are deprecated + always empty,
+        // and these fields can be "" so use || not ??.
+        const stDelay = (s) => {
+          const a = Date.parse((s && (s.schArr || s.schDep)) || ''), b = Date.parse((s && (s.arr || s.dep)) || '');
+          return Number.isFinite(a) && Number.isFinite(b) ? Math.round((b - a) / 60000) : null;
+        };
+        const nextStop = stations.find((s) => !/departed/i.test(String(s.status || ''))) || stations[stations.length - 1];
+        let delayMinutes = stDelay(nextStop);
+        if (delayMinutes == null) delayMinutes = delayFrom(t.statusMsg);
         trains.push({
           route: t.routeName, trainNum: t.trainNum, heading: t.heading, status: t.trainState,
           delayMinutes, lastStation: t.eventName ?? null,
           stops: stations.filter((s) => WATCH.includes(s.code)).map((s) => ({
             code: s.code, estimated: s.arr ?? s.dep ?? null,
-            delayMinutes: delayFrom(s.arrCmnt ?? s.depCmnt),
+            delayMinutes: stDelay(s),
           })),
         });
       }

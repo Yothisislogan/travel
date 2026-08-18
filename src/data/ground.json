@@ -2,25 +2,260 @@
   "_comment": "Long-haul ground legs, researched 2026-08-17. hours = scheduled travel time; costUSD = typical coach fare booked 0-7 days out. daysPerWeek 7 = daily. Verify times/fares on amtrak.com / flixbus.com before booking.",
   "asOf": "2026-08-17",
   "trainLegs": [
-    { "id": "zephyr", "operator": "Amtrak California Zephyr", "from": "EMY", "to": "CHI", "hours": 51.5, "costUSD": { "min": 150, "max": 420 }, "daysPerWeek": 7, "notes": "Train 6 daily: Emeryville morning departure via Reno/Denver, Chicago ~2:50pm two days later.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
-    { "id": "coast-starlight", "operator": "Amtrak Coast Starlight", "from": "EMY", "to": "LAUS", "hours": 12.5, "costUSD": { "min": 55, "max": 120 }, "daysPerWeek": 7, "notes": "Bay Area to LA Union Station.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
-    { "id": "sw-chief", "operator": "Amtrak Southwest Chief", "from": "LAUS", "to": "CHI", "hours": 43.5, "costUSD": { "min": 120, "max": 300 }, "daysPerWeek": 7, "notes": "Train 4 daily: LA early evening via Albuquerque/Kansas City, Chicago ~2:45pm two days later.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
-    { "id": "las-chief", "operator": "Amtrak Thruway bus + Southwest Chief (through ticket)", "from": "LAS", "to": "CHI", "hours": 41.8, "costUSD": { "min": 150, "max": 250 }, "daysPerWeek": 7, "notes": "No train serves Las Vegas (Brightline West ~2029). Nightly Vegas Airporter Thruway bus from Harry Reid ~9:00pm to Kingman AZ (~3.5h), guaranteed connection to the eastbound Chief ~1:45am - book as one Amtrak ticket LVS->CHI.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
-    { "id": "floridian", "operator": "Amtrak Floridian", "from": "CHI", "to": "WAS", "hours": 17.8, "costUSD": { "min": 90, "max": 190 }, "daysPerWeek": 7, "notes": "Daily (the old Capitol Limited, merged with Silver Star since Nov 2024): Chicago ~6:40pm -> Washington ~1:25pm next day.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
-    { "id": "cardinal", "operator": "Amtrak Cardinal", "from": "CHI", "to": "CVS", "hours": 21, "costUSD": { "min": 85, "max": 160 }, "daysPerWeek": 3, "notes": "Departs Chicago Tue/Thu/Sat via Cincinnati/WV; Charlottesville VA stop (~23.8h all the way to DC).", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
-    { "id": "cvs-was", "operator": "Amtrak (Charlottesville-DC)", "from": "CVS", "to": "WAS", "hours": 2.7, "costUSD": { "min": 20, "max": 45 }, "daysPerWeek": 7, "notes": "Cardinal continues to WAS; also Regional/Crescent.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
-    { "id": "was-rvr", "operator": "Amtrak Northeast Regional", "from": "WAS", "to": "RVR", "hours": 2.5, "costUSD": { "min": 15, "max": 45 }, "daysPerWeek": 7, "notes": "Several departures daily.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
-    { "id": "was-nfk", "operator": "Amtrak Northeast Regional", "from": "WAS", "to": "NFK", "hours": 4.75, "costUSD": { "min": 27, "max": 75 }, "daysPerWeek": 7, "notes": "Direct to Norfolk via Richmond Main St, 2-3 departures daily.", "bookLink": "https://www.amtrak.com/tickets/departure.html" },
-    { "id": "rvr-nfk", "operator": "Amtrak Northeast Regional", "from": "RVR", "to": "NFK", "hours": 2.3, "costUSD": { "min": 15, "max": 40 }, "daysPerWeek": 7, "notes": "Richmond to Norfolk.", "bookLink": "https://www.amtrak.com/tickets/departure.html" }
+    {
+      "id": "zephyr",
+      "operator": "Amtrak California Zephyr",
+      "from": "EMY",
+      "to": "CHI",
+      "hours": 51.5,
+      "costUSD": {
+        "min": 210,
+        "max": 640
+      },
+      "daysPerWeek": 7,
+      "notes": "Train 6 daily. Bucket-priced: ~$210 low bucket, $306-640 booked inside a month.",
+      "bookLink": "https://www.amtrak.com/tickets/departure.html"
+    },
+    {
+      "id": "coast-starlight",
+      "operator": "Amtrak Coast Starlight",
+      "from": "EMY",
+      "to": "LAUS",
+      "hours": 12.5,
+      "costUSD": {
+        "min": 55,
+        "max": 120
+      },
+      "daysPerWeek": 7,
+      "notes": "Bay Area to LA Union Station.",
+      "bookLink": "https://www.amtrak.com/tickets/departure.html"
+    },
+    {
+      "id": "sw-chief",
+      "operator": "Amtrak Southwest Chief",
+      "from": "LAUS",
+      "to": "CHI",
+      "hours": 43.5,
+      "costUSD": {
+        "min": 150,
+        "max": 450
+      },
+      "daysPerWeek": 7,
+      "notes": "Train 4 daily via Albuquerque/Kansas City. Bucket-priced; last-minute lands in top buckets.",
+      "bookLink": "https://www.amtrak.com/tickets/departure.html"
+    },
+    {
+      "id": "las-chief",
+      "operator": "Amtrak Thruway bus + Southwest Chief (through ticket)",
+      "from": "LAS",
+      "to": "CHI",
+      "hours": 41.8,
+      "costUSD": {
+        "min": 150,
+        "max": 250
+      },
+      "daysPerWeek": 7,
+      "notes": "No train serves Las Vegas (Brightline West ~2029). Nightly Vegas Airporter Thruway bus from Harry Reid ~9:00pm to Kingman AZ (~3.5h), guaranteed connection to the eastbound Chief ~1:45am - book as one Amtrak ticket LVS->CHI.",
+      "bookLink": "https://www.amtrak.com/tickets/departure.html"
+    },
+    {
+      "id": "floridian",
+      "operator": "Amtrak Floridian",
+      "from": "CHI",
+      "to": "WAS",
+      "hours": 17.8,
+      "costUSD": {
+        "min": 90,
+        "max": 230
+      },
+      "daysPerWeek": 7,
+      "notes": "Daily (ex-Capitol Limited, merged with Silver Star since Nov 2024): Chicago ~6:40pm -> Washington ~1:25pm next day. ~$80-100 low bucket, $200-230 last-minute.",
+      "bookLink": "https://www.amtrak.com/tickets/departure.html"
+    },
+    {
+      "id": "cardinal",
+      "operator": "Amtrak Cardinal",
+      "from": "CHI",
+      "to": "CVS",
+      "hours": 21,
+      "costUSD": {
+        "min": 85,
+        "max": 220
+      },
+      "daysPerWeek": 3,
+      "notes": "Departs Chicago Tue/Thu/Sat via Cincinnati/WV; Charlottesville VA stop (~23.8h all the way to DC).",
+      "bookLink": "https://www.amtrak.com/tickets/departure.html"
+    },
+    {
+      "id": "cvs-was",
+      "operator": "Amtrak (Charlottesville-DC)",
+      "from": "CVS",
+      "to": "WAS",
+      "hours": 2.7,
+      "costUSD": {
+        "min": 20,
+        "max": 45
+      },
+      "daysPerWeek": 7,
+      "notes": "Cardinal continues to WAS; also Regional/Crescent.",
+      "bookLink": "https://www.amtrak.com/tickets/departure.html"
+    },
+    {
+      "id": "was-rvr",
+      "operator": "Amtrak Northeast Regional",
+      "from": "WAS",
+      "to": "RVR",
+      "hours": 2.5,
+      "costUSD": {
+        "min": 26,
+        "max": 95
+      },
+      "daysPerWeek": 7,
+      "notes": "Several departures daily. ~$26-31 low bucket; walk-up/last-minute $70-95.",
+      "bookLink": "https://www.amtrak.com/tickets/departure.html"
+    },
+    {
+      "id": "was-nfk",
+      "operator": "Amtrak Northeast Regional",
+      "from": "WAS",
+      "to": "NFK",
+      "hours": 4.75,
+      "costUSD": {
+        "min": 40,
+        "max": 120
+      },
+      "daysPerWeek": 7,
+      "notes": "Direct to Norfolk via Richmond Main St, 2-3 departures daily; last-minute lands in top buckets.",
+      "bookLink": "https://www.amtrak.com/tickets/departure.html"
+    },
+    {
+      "id": "rvr-nfk",
+      "operator": "Amtrak Northeast Regional",
+      "from": "RVR",
+      "to": "NFK",
+      "hours": 2.3,
+      "costUSD": {
+        "min": 18,
+        "max": 55
+      },
+      "daysPerWeek": 7,
+      "notes": "Richmond to Norfolk.",
+      "bookLink": "https://www.amtrak.com/tickets/departure.html"
+    }
   ],
   "busLegs": [
-    { "id": "las-la", "operator": "FlixBus/Greyhound", "from": "LAS_BUS", "to": "LA_BUS", "hours": 5, "costUSD": { "min": 30, "max": 65 }, "daysPerWeek": 7, "notes": "Frequent daily departures; connects to Southwest Chief at LA Union Station.", "bookLink": "https://www.flixbus.com" },
-    { "id": "las-den", "operator": "Greyhound/FlixBus", "from": "LAS_BUS", "to": "DEN_BUS", "hours": 15, "costUSD": { "min": 80, "max": 150 }, "daysPerWeek": 7, "notes": "Typical transfer city heading east by bus.", "bookLink": "https://www.flixbus.com" },
-    { "id": "den-chi", "operator": "Greyhound/FlixBus", "from": "DEN_BUS", "to": "CHI_BUS", "hours": 19, "costUSD": { "min": 90, "max": 170 }, "daysPerWeek": 7, "notes": "Often overnight.", "bookLink": "https://www.flixbus.com" },
-    { "id": "sf-chi-bus", "operator": "Greyhound/FlixBus (transfers)", "from": "SF_BUS", "to": "CHI_BUS", "hours": 52, "costUSD": { "min": 140, "max": 250 }, "daysPerWeek": 7, "notes": "Multi-transfer via Sacramento/Salt Lake/Denver; SF->DC end-to-end runs ~67-84h, $146-300.", "bookLink": "https://www.flixbus.com" },
-    { "id": "chi-dc-bus", "operator": "FlixBus/Greyhound", "from": "CHI_BUS", "to": "DC_BUS", "hours": 14.5, "costUSD": { "min": 60, "max": 120 }, "daysPerWeek": 7, "notes": "Overnight options via Pittsburgh.", "bookLink": "https://www.flixbus.com" },
-    { "id": "dc-ric-bus", "operator": "FlixBus/Greyhound", "from": "DC_BUS", "to": "RIC_BUS", "hours": 2.5, "costUSD": { "min": 15, "max": 35 }, "daysPerWeek": 7, "notes": "Several daily.", "bookLink": "https://www.flixbus.com" },
-    { "id": "dc-nfk-bus", "operator": "FlixBus/Greyhound", "from": "DC_BUS", "to": "NFK_BUS", "hours": 4.5, "costUSD": { "min": 25, "max": 50 }, "daysPerWeek": 7, "notes": "Limited daily departures.", "bookLink": "https://www.flixbus.com" },
-    { "id": "las-east-bus", "operator": "Greyhound/FlixBus (3-5 transfers)", "from": "LAS_BUS", "to": "DC_BUS", "hours": 66, "costUSD": { "min": 155, "max": 330 }, "daysPerWeek": 7, "notes": "LAS->east coast all-bus runs 60-76h via Denver or LA/Dallas then St Louis/Nashville; booked days out typically $250-330.", "bookLink": "https://www.flixbus.com" }
-  ]
+    {
+      "id": "las-la",
+      "operator": "FlixBus/Greyhound",
+      "from": "LAS_BUS",
+      "to": "LA_BUS",
+      "hours": 5,
+      "costUSD": {
+        "min": 30,
+        "max": 65
+      },
+      "daysPerWeek": 7,
+      "notes": "Frequent daily departures; connects to Southwest Chief at LA Union Station.",
+      "bookLink": "https://www.flixbus.com"
+    },
+    {
+      "id": "las-den",
+      "operator": "Greyhound/FlixBus",
+      "from": "LAS_BUS",
+      "to": "DEN_BUS",
+      "hours": 15,
+      "costUSD": {
+        "min": 80,
+        "max": 150
+      },
+      "daysPerWeek": 7,
+      "notes": "Typical transfer city heading east by bus.",
+      "bookLink": "https://www.flixbus.com"
+    },
+    {
+      "id": "den-chi",
+      "operator": "Greyhound/FlixBus",
+      "from": "DEN_BUS",
+      "to": "CHI_BUS",
+      "hours": 19,
+      "costUSD": {
+        "min": 90,
+        "max": 170
+      },
+      "daysPerWeek": 7,
+      "notes": "Often overnight.",
+      "bookLink": "https://www.flixbus.com"
+    },
+    {
+      "id": "sf-chi-bus",
+      "operator": "Greyhound/FlixBus (transfers)",
+      "from": "SF_BUS",
+      "to": "CHI_BUS",
+      "hours": 52,
+      "costUSD": {
+        "min": 140,
+        "max": 250
+      },
+      "daysPerWeek": 7,
+      "notes": "Multi-transfer via Sacramento/Salt Lake/Denver; SF->DC end-to-end runs ~67-84h, $146-300.",
+      "bookLink": "https://www.flixbus.com"
+    },
+    {
+      "id": "chi-dc-bus",
+      "operator": "FlixBus/Greyhound",
+      "from": "CHI_BUS",
+      "to": "DC_BUS",
+      "hours": 14.5,
+      "costUSD": {
+        "min": 60,
+        "max": 120
+      },
+      "daysPerWeek": 7,
+      "notes": "Overnight options via Pittsburgh.",
+      "bookLink": "https://www.flixbus.com"
+    },
+    {
+      "id": "dc-ric-bus",
+      "operator": "FlixBus/Greyhound",
+      "from": "DC_BUS",
+      "to": "RIC_BUS",
+      "hours": 2.5,
+      "costUSD": {
+        "min": 15,
+        "max": 35
+      },
+      "daysPerWeek": 7,
+      "notes": "Several daily.",
+      "bookLink": "https://www.flixbus.com"
+    },
+    {
+      "id": "dc-nfk-bus",
+      "operator": "FlixBus/Greyhound",
+      "from": "DC_BUS",
+      "to": "NFK_BUS",
+      "hours": 4.5,
+      "costUSD": {
+        "min": 25,
+        "max": 50
+      },
+      "daysPerWeek": 7,
+      "notes": "Limited daily departures.",
+      "bookLink": "https://www.flixbus.com"
+    },
+    {
+      "id": "las-east-bus",
+      "operator": "Greyhound/FlixBus (3-5 transfers)",
+      "from": "LAS_BUS",
+      "to": "DC_BUS",
+      "hours": 66,
+      "costUSD": {
+        "min": 155,
+        "max": 330
+      },
+      "daysPerWeek": 7,
+      "notes": "LAS->east coast all-bus runs 60-76h via Denver or LA/Dallas then St Louis/Nashville; booked days out typically $250-330.",
+      "bookLink": "https://www.flixbus.com"
+    }
+  ],
+  "_fareNote": "Amtrak yield-manages fares in buckets that ratchet up as each sells out; there is no public fare API. Ranges here span low bucket to typical last-minute (0-7 day) pricing: ~2.5-3x low on short NEC pairs, ~1.6-2.5x on long-distance coach. Confirm the real number via the booking link."
 }

@@ -49,18 +49,28 @@ export function parseDelayMinutes(text) {
   return /early/.test(s) ? -mins : mins;
 }
 
-// Fall back to comparing scheduled vs estimated/actual timestamps.
 function diffMinutes(sched, actual) {
-  const a = Date.parse(sched ?? '');
-  const b = Date.parse(actual ?? '');
+  const a = Date.parse(sched || '');
+  const b = Date.parse(actual || '');
   if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
   return Math.round((b - a) / 60000);
 }
 
-function stationDelay(st) {
-  const fromText = parseDelayMinutes(st?.arrCmnt ?? st?.depCmnt);
-  if (fromText != null) return fromText;
-  return diffMinutes(st?.schArr ?? st?.schDep, st?.arr ?? st?.dep);
+// Authoritative delay for a stop, matching what Amtraker's own icon-colour math
+// does: (estimated|actual) - scheduled. The prose fields (arrCmnt/depCmnt/
+// trainTimely) are DEPRECATED in Amtraker v3 and always come back as empty
+// strings, so they are not used - and note `||` not `??`, because "" is the
+// empty case here, not null.
+export function stationDelay(st) {
+  return diffMinutes(st?.schArr || st?.schDep, st?.arr || st?.dep);
+}
+
+const isDeparted = (st) => /departed/i.test(String(st?.status ?? ''));
+
+// A blocked IP is served a poisoned payload (a fake train 9997 "Error Train")
+// rather than an HTTP error, so filter it or the UI shows nonsense.
+export function isPoisonedTrain(t) {
+  return String(t?.trainNum) === '9997' || /error train/i.test(String(t?.routeName ?? ''));
 }
 
 // Normalize one /v3/trains payload into the trains we care about, each with a
@@ -70,16 +80,15 @@ export function parseAmtrakTrains(payload, watchStations = []) {
   for (const list of Object.values(payload ?? {})) {
     for (const t of Array.isArray(list) ? list : []) {
       const hit = RELEVANT.find((r) => r.match.test(t?.routeName ?? ''));
-      if (!hit) continue;
+      if (!hit || isPoisonedTrain(t)) continue;
       const stations = Array.isArray(t.stations) ? t.stations : [];
-      // Headline delay: the train's own status text, else the worst delay among
-      // stations it has not yet reached (that is what still affects you).
-      let delayMinutes = parseDelayMinutes(t.trainTimely ?? t.statusMsg);
-      if (delayMinutes == null) {
-        const upcoming = stations.filter((s) => String(s?.status ?? '').toLowerCase() !== 'departed');
-        const deltas = (upcoming.length ? upcoming : stations).map(stationDelay).filter((n) => n != null);
-        delayMinutes = deltas.length ? Math.max(...deltas) : null;
-      }
+      // Headline delay = delay at the next stop the train hasn't reached yet,
+      // which is how Amtraker itself decides a train's status. If it has
+      // finished its run, use the last stop. (statusMsg is a last resort; a
+      // not-yet-departed train reports arr == schArr, i.e. zero delay.)
+      const nextStop = stations.find((s) => !isDeparted(s)) ?? stations[stations.length - 1];
+      let delayMinutes = stationDelay(nextStop);
+      if (delayMinutes == null) delayMinutes = parseDelayMinutes(t.statusMsg);
       out.push({
         legId: hit.id,
         route: t.routeName ?? null,
