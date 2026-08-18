@@ -196,6 +196,47 @@ test('award options sorted by fewest miles', () => {
   for (let i = 1; i < options.length; i++) assert.ok(options[i].miles >= options[i - 1].miles);
 });
 
+test('hotelOptions: Vegas has MGM + Caesars groups, sorted, with links and member rates', async () => {
+  const { hotelOptions } = await import('../src/providers/hotels.js');
+  const o = hotelOptions('vegas', '2026-09-01');
+  assert.equal(o.city, 'Las Vegas');
+  assert.equal(o.checkIn, '2026-09-01');
+  assert.equal(o.checkOut, '2026-09-03');
+  const brands = o.groups.map((g) => g.brand);
+  assert.ok(brands.includes('MGM Rewards') && brands.includes('Caesars Rewards'));
+  const mgm = o.groups.find((g) => g.brand === 'MGM Rewards');
+  assert.ok(mgm.properties.length >= 8);
+  // cheapest public rate first
+  for (let i = 1; i < mgm.properties.length; i++) {
+    const prev = mgm.properties[i - 1].publicUSD, cur = mgm.properties[i].publicUSD;
+    assert.ok((cur.min + cur.max) >= (prev.min + prev.max));
+  }
+  const bellagio = mgm.properties.find((p) => p.name === 'Bellagio');
+  assert.ok(bellagio.bookLink.includes('mgmresorts.com'));
+  assert.ok(bellagio.memberUSD.min < bellagio.publicUSD.min, 'member rate below public');
+  assert.equal(bellagio.dataStatus, 'estimate');
+  const caesars = o.groups.find((g) => g.brand === 'Caesars Rewards');
+  assert.ok(caesars.properties.find((p) => p.name === 'Caesars Palace').bookLink.includes('caesars.com'));
+});
+
+test('hotelOptions: SF is Priceline Express with opaque star tiers', async () => {
+  const { hotelOptions } = await import('../src/providers/hotels.js');
+  const o = hotelOptions('sf', '2026-09-01');
+  assert.equal(o.city, 'San Francisco');
+  const g = o.groups[0];
+  assert.equal(g.express, true);
+  assert.equal(g.brand, 'Priceline Express Deals');
+  assert.ok(g.tiers.length >= 2);
+  assert.ok(g.tiers[0].expressUSD.min < g.tiers[0].publicUSD.min, 'express discounted below public');
+  assert.ok(g.bookLink.includes('priceline.com'));
+});
+
+test('hotelOptions: unknown city returns an error, never throws', async () => {
+  const { hotelOptions } = await import('../src/providers/hotels.js');
+  const o = hotelOptions('paris', '2026-09-01');
+  assert.ok(o.error && o.error.includes('Unknown city'));
+});
+
 test('normalizeProgram maps airline strings to display program names', () => {
   assert.equal(normalizeProgram('american'), 'American AAdvantage');
   assert.equal(normalizeProgram('UA'), 'United MileagePlus');

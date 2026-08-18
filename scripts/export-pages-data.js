@@ -8,6 +8,7 @@ import { gowildOptions, gowildRules } from '../src/providers/frontier.js';
 import { backupCashOptions } from '../src/providers/flights.js';
 import { awardOptions } from '../src/providers/awards.js';
 import { liveStatus } from '../src/providers/amtrak.js';
+import { hotelOptions } from '../src/providers/hotels.js';
 import { planReturn } from '../src/planner.js';
 import { syncStatus } from '../src/sync.js';
 
@@ -46,6 +47,7 @@ const data = {
   backup: Object.fromEntries(
     ['LAS', 'SFO'].map((from) => [from, { cash: backupCashOptions(from, tomorrow), awards: awardOptions(from) }]),
   ),
+  hotels: Object.fromEntries(['vegas', 'sf'].map((c) => [c, hotelOptions(c, tomorrow)])),
   amtrakLive: liveStatus(),
 };
 

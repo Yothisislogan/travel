@@ -5,6 +5,7 @@ import * as flights from './providers/flights.js';
 import * as awards from './providers/awards.js';
 import * as amtrak from './providers/amtrak.js';
 import * as bus from './providers/bus.js';
+import * as hotels from './providers/hotels.js';
 import { readSnapshot, freshnessLabel, loadJSON } from './util.js';
 
 const config = loadJSON('trip.config.json');
@@ -15,6 +16,7 @@ export const SECTIONS = {
   awards: { label: 'Award (miles) availability', sync: awards.sync },
   amtrak: { label: 'Amtrak', sync: amtrak.sync },
   bus: { label: 'Intercity bus', sync: bus.sync },
+  hotels: { label: 'Hotels', sync: hotels.sync },
 };
 
 export async function syncAll({ sections, date } = {}) {
