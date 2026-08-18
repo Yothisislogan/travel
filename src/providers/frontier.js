@@ -42,12 +42,10 @@ export function fill(template, params) {
   return template.replace(/\{(\w+)\}/g, (_, k) => encodeURIComponent(params[k] ?? ''));
 }
 
-// Frontier's booking URL wants 'Aug 18, 2026'-style dates, not ISO.
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-export function frontierDate(iso) {
-  const [y, m, d] = iso.split('-').map(Number);
-  return `${MONTHS[m - 1]} ${d}, ${y}`;
-}
+// Date formatting and payload parsing live in ../gowild-parse.js, which has no
+// Node dependencies so the edge relay (src/worker.js) can share them verbatim.
+import { frontierDate, parseGowildFlights, summarizeGowild } from '../gowild-parse.js';
+export { frontierDate, parseGowildFlights, summarizeGowild };
 
 export function searchLink(origin, dest, date) {
   return fill(sources.frontier.deepLink, { origin, dest, date: frontierDate(date) });
@@ -205,65 +203,6 @@ export function gowildOptions(fromList, toList, dateISO) {
 // We fetch it only for this trip's own pairs, at a polite pace, and fail
 // honestly when bot protection blocks us. Note: automated access sits outside
 // Frontier's ToS - keep usage personal and low-volume (see docs/API-OPTIONS.md).
-
-const HTML_ENTITIES = { '&quot;': '"', '&#34;': '"', '&amp;': '&', '&#38;': '&', '&lt;': '<', '&gt;': '>', '&#39;': "'" };
-function unescapeHTML(s) {
-  return s.replace(/&quot;|&#34;|&amp;|&#38;|&lt;|&gt;|&#39;/g, (m) => HTML_ENTITIES[m]);
-}
-
-// Extract the first balanced JSON array starting at text[start] === '['.
-function balancedArray(text, start) {
-  let depth = 0;
-  let inStr = false;
-  for (let i = start; i < text.length; i++) {
-    const c = text[i];
-    if (inStr) {
-      if (c === '\\') i++;
-      else if (c === '"') inStr = false;
-    } else if (c === '"') inStr = true;
-    else if (c === '[' || c === '{') depth++;
-    else if (c === ']' || c === '}') {
-      depth--;
-      if (depth === 0) return text.slice(start, i + 1);
-    }
-  }
-  return null;
-}
-
-// Parse GoWild flight data out of an InternalSelect response (HTML or JSON).
-// Returns [] when the payload isn't found (blocked page, layout change).
-export function parseGowildFlights(body) {
-  if (typeof body !== 'string') body = JSON.stringify(body);
-  let text = body.includes('&quot;') ? unescapeHTML(body) : body;
-  const key = text.indexOf('"journeys"');
-  if (key === -1) return [];
-  const arrStart = text.indexOf('[', key);
-  if (arrStart === -1) return [];
-  const arr = balancedArray(text, arrStart);
-  if (!arr) return [];
-  let journeys;
-  try {
-    journeys = JSON.parse(arr);
-  } catch {
-    return [];
-  }
-  const flights = [];
-  for (const j of Array.isArray(journeys) ? journeys : []) {
-    for (const f of j?.flights ?? []) {
-      flights.push({
-        flightNumber: f.flightNumber ?? f.flightCode ?? null,
-        departure: f.departureDate ?? f.std ?? null,
-        arrival: f.arrivalDate ?? f.sta ?? null,
-        stops: f.stopsText ?? (Array.isArray(f.legs) ? `${f.legs.length - 1} stop(s)` : null),
-        duration: f.duration ?? null,
-        gowildEnabled: !!f.isGoWildFareEnabled,
-        goWildFare: f.goWildFare ?? null,
-        goWildSeatsRemaining: f.goWildFareSeatsRemaining ?? null,
-      });
-    }
-  }
-  return flights;
-}
 
 const PAGE_HEADERS = { ...BROWSER_HEADERS, accept: 'text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8' };
 

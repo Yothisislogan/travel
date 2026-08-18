@@ -15,7 +15,10 @@
     "return": "node src/cli.js return",
     "backup": "node src/cli.js backup",
     "dashboard": "node src/cli.js dashboard",
-    "test": "node --test test/"
+    "test": "node --test test/*.test.js",
+    "relay": "node src/worker.js",
+    "phone": "node src/cli.js phone",
+    "publish": "node src/cli.js publish"
   },
   "license": "Apache-2.0",
   "private": true

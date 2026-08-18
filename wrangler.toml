@@ -1,0 +1,15 @@
+# Deploy the GoWild relay (src/worker.js) to Cloudflare Workers' free tier:
+#
+#   npm i -g wrangler && wrangler login
+#   wrangler deploy
+#
+# It prints a URL like https://gowild-relay.<you>.workers.dev - paste that into
+# the dashboard under "Set up one-tap live seats". See docs/RELAY.md.
+name = "gowild-relay"
+main = "src/worker.js"
+compatibility_date = "2025-01-01"
+
+# Frontier's search page is HTML, not an API, so responses are large-ish; the
+# relay caches for 5 minutes and only ever fetches this trip's own route pairs.
+[observability]
+enabled = true

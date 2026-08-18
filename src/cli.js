@@ -190,7 +190,26 @@ async function main() {
     }
 
     case 'publish': {
-      const { publish } = await import('./publish.js');
+      const { publish, watch, installAgent } = await import('./publish.js');
+
+      if (flags.install !== undefined) {
+        const r = installAgent();
+        if (!r.ok) { console.log(r.message); break; }
+        console.log(B(`Wrote the ${r.kind} service file:`));
+        console.log(`  ${r.path}`);
+        console.log('\nActivate it with:');
+        console.log(B(`  ${r.load}`));
+        console.log(dim(`\nIt then publishes every 30 minutes from this machine, at boot, with no terminal open.`));
+        console.log(dim(`Logs: cache/publish.log   ·   Stop it with: ${r.unload}`));
+        break;
+      }
+      if (flags.watch !== undefined) {
+        const every = +(flags.every ?? 30);
+        console.log(B(`Publishing every ${every} min from this machine. Ctrl-C to stop.`));
+        await watch({ everyMinutes: every, date: flags.date, sections: flags.section?.split(',') });
+        break;
+      }
+
       console.log('Syncing from this machine, then publishing to the phone dashboard...');
       const r = await publish({ date: flags.date, push: flags.push !== 'false', sections: flags.section?.split(',') });
       for (const [name, s] of Object.entries(r.results)) {
@@ -209,6 +228,47 @@ async function main() {
     case 'dashboard': {
       const { startServer } = await import('./server.js');
       startServer(+(process.env.PORT || 8787));
+      break;
+    }
+
+    // The no-hosting, no-computer path to live seats. Your phone is already on a
+    // connection Frontier answers, and Shortcuts is not a browser, so the CORS
+    // wall that stops the web dashboard does not apply to it.
+    case 'phone': {
+      const { searchURL } = await import('./gowild-parse.js');
+      const home = config.traveler.homeAirports;
+      const pairs = [
+        [home.preferred, 'LAS'], [home.backup, 'LAS'], ['LAS', 'SFO'],
+        ['SFO', home.preferred], ['LAS', home.preferred],
+      ];
+      const d = defaultDate();
+      console.log(B('iPhone Shortcut: "GoWild seats" - one tap, works on cellular, nothing hosted'));
+      console.log(dim('Shortcuts makes plain HTTP requests, so Frontier answers it the same way it answers your browser.\n'));
+      console.log('Open Shortcuts -> + -> add these actions in order:\n');
+      console.log(`  1. ${B('Date')}                  (leave as Current Date)`);
+      console.log(`  2. ${B('Adjust Date')}           Add 1 Days        <- GoWild opens the day before`);
+      console.log(`  3. ${B('Format Date')}           Custom: ${B('MMM d, yyyy')}   <- exactly what Frontier's URL wants`);
+      console.log(`  4. ${B('Text')}                  paste these lines:`);
+      for (const [o, dst] of pairs) console.log(`         o1=${o}&d1=${dst}`);
+      console.log(`  5. ${B('Split Text')}            by New Lines`);
+      console.log(`  6. ${B('Repeat with Each')}      (Split Text)  - inside the repeat:`);
+      console.log(`       a. ${B('Text')}             https://booking.flyfrontier.com/Flight/InternalSelect?[Repeat Item]&dd1=[Formatted Date]&ADT=1&mon=true`);
+      console.log(dim('                            (tap the variable chips for Repeat Item and Formatted Date)'));
+      console.log(`       b. ${B('Get Contents of URL')}  the Text above, Method GET`);
+      console.log(`       c. ${B('Match Text')}       ${B('"goWildFareSeatsRemaining":[1-9][0-9]*')}`);
+      console.log(dim('                            matches only flights that still have seats'));
+      console.log(`       d. ${B('Count')}            Items in Matches`);
+      console.log(`       e. ${B('Text')}             [Repeat Item] - [Count] flight(s) with GoWild seats`);
+      console.log(`  7. ${B('Combine Text')}          Repeat Results, with New Lines`);
+      console.log(`  8. ${B('Show Result')}\n`);
+      console.log('Add it to your home screen and tap it. Sample output:\n');
+      console.log(dim('  o1=LAS&d1=SFO - 3 flight(s) with GoWild seats\n  o1=RIC&d1=LAS - 0 flight(s) with GoWild seats\n'));
+      console.log(dim('If Frontier returns 0 for everything, add a Headers row to step 6b:'));
+      console.log(dim('  User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Safari/604.1\n'));
+      console.log(B('Android:') + ' the "HTTP Shortcuts" app does the same thing - same URLs, same pattern.\n');
+      console.log(B(`Today's URLs (${d}), if you would rather just tap one:`));
+      for (const [o, dst] of pairs) console.log(`  ${o}->${dst}  ${searchURL(o, dst, d)}`);
+      console.log(dim('\nPrefer no phone setup at all? Deploy the relay instead (wrangler deploy) - see docs/RELAY.md.'));
       break;
     }
 
@@ -237,8 +297,16 @@ Usage: node src/cli.js <command> [flags]
   publish                    Sync here, then push the live result so your PHONE
                              dashboard shows real GoWild seats (Frontier blocks
                              GitHub's servers, not your home connection)
+         [--watch --every 30]  keep publishing on an interval
+         [--install]           register it as a background job (launchd/systemd)
+  phone                      Build a one-tap iPhone Shortcut that checks live
+                             GoWild seats with nothing hosted anywhere
   dashboard                  Web dashboard, reachable from your phone on the
                              same Wi-Fi (prints the LAN address on startup)
+
+Live seats on the phone with no computer running: deploy the relay once -
+  npm i -g wrangler && wrangler login && wrangler deploy   (see docs/RELAY.md)
+then paste its URL into the dashboard's "Set up one-tap live seats".
 
 Dates default to tomorrow (the first GoWild-bookable day).`);
     }

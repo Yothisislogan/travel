@@ -62,19 +62,41 @@
 
   <section id="secAmtrak"><h2>Amtrak live <button id="amtrakBtn" class="ghost">↻</button></h2><div id="amtrakBody" class="empty">from last sync&hellip;</div></section>
 
-  <section id="secSeats">
-    <h2>Live GoWild seats — what works</h2>
-    <p class="dim">Frontier shows GoWild fares only to a logged-in pass holder, and blocks datacenter servers — so no website (including this one) can fetch them for you. These three do work, most reliable first:</p>
-    <ol style="margin:8px 0 4px; padding-left:20px; line-height:1.7">
-      <li><b>Tap any &ldquo;check fares ↗&rdquo; link above.</b> It opens Frontier prefilled for that route and date, already signed in — GoWild fares show right there. Works on any phone, nothing to install.</li>
-      <li><b>Publish from your computer:</b> run <code>node src/cli.js publish</code> at home. It fetches Frontier from <i>your</i> connection (which isn't blocked) and pushes the result here, so this page shows real fares and seat counts.</li>
-      <li><b>Same Wi-Fi as your computer?</b> Run <code>node src/cli.js dashboard</code> — it prints a phone address like <code>http://192.168.x.x:8787</code>. That dashboard has a real <b>↻ live seats</b> button.</li>
-    </ol>
-    <p class="dim">Community trackers poll every route and are handy when you want to browse rather than check one flight: <span id="trackerLinks"></span></p>
-    <details style="margin-top:8px">
-      <summary class="dim" style="cursor:pointer">Optional: bookmarklet (Chrome only — Safari and Firefox block it)</summary>
-      <p class="dim" style="margin-top:6px">Runs on Frontier's own page and overlays every flight's fare and seats remaining. <b>Desktop Chrome:</b> drag the button to your bookmarks bar. <b>Phone:</b> tap to copy, make a new bookmark, paste it as the <i>URL</i>. Then open a Frontier results page and tap the bookmark.</p>
-      <p><a class="bookmarklet" id="bmLink" href="#" draggable="true">🎯 GoWild seats</a> <button id="bmCopy" class="ghost">Copy code</button></p>
+  <section class="wide" id="secSeats">
+    <h2>Live GoWild seats <button id="seatsBtn" class="ghost">↻ check now</button></h2>
+    <div id="seatsBody" class="empty">loading&hellip;</div>
+    <p class="dim" style="margin-top:8px">Browse every route instead: <span id="trackerLinks"></span></p>
+
+    <details id="relayHelp" style="margin-top:10px">
+      <summary class="dim" style="cursor:pointer">Set up one-tap live seats &mdash; five minutes, once</summary>
+      <p class="dim" style="margin-top:8px">Frontier publishes GoWild fares and seat counts on its own search page without a login, but a web page can't read another site's response (no CORS), and GitHub's build servers get bot-blocked. So <i>something</i> has to make that request for you. Pick one &mdash; after setup, none of them need a computer running.</p>
+
+      <h3 style="margin:12px 0 4px">A · Relay <span class="tag live">recommended</span></h3>
+      <p class="dim">A ~100-line function (<code>src/worker.js</code>) you deploy once to Cloudflare Workers' free tier. It fetches Frontier and answers with CORS headers, so <b>this page</b> shows real seats &mdash; on cellular, on any device, forever.</p>
+      <pre><code>npm i -g wrangler &amp;&amp; wrangler login
+wrangler deploy      # prints https://gowild-relay.&lt;you&gt;.workers.dev</code></pre>
+      <p>
+        <input id="relayUrl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://gowild-relay.you.workers.dev" size="40">
+        <button id="relaySave" class="ghost">Save</button>
+        <button id="relayTest" class="ghost">Test</button>
+        <button id="relayClear" class="ghost">Forget</button>
+      </p>
+      <p class="dim">Stored only in this browser. Add <code>?relay=&lt;url&gt;</code> to this page's address to set it on another device.</p>
+
+      <h3 style="margin:12px 0 4px">B · iPhone Shortcut &mdash; no hosting at all</h3>
+      <p class="dim">Your phone is already on a connection Frontier answers, and the Shortcuts app isn't a browser, so CORS doesn't apply. Run <code>node src/cli.js phone</code> for the exact 8-step recipe (it prints the URLs and the match pattern for your routes). One tap from the home screen, works on cellular.</p>
+
+      <h3 style="margin:12px 0 4px">C · Publish from home, on a timer</h3>
+      <p class="dim">If you have a machine that stays on: <code>node src/cli.js publish --install</code> registers a background job (launchd on macOS, systemd on Linux) that syncs from your own connection every 30 minutes and pushes the result here. Nothing to tap.</p>
+
+      <h3 style="margin:12px 0 4px">D · Nothing at all</h3>
+      <p class="dim">Tap any &ldquo;check fares ↗&rdquo; link above &mdash; Frontier opens prefilled for that route and date and shows the GoWild fare itself. Always works; you just read it there.</p>
+
+      <details style="margin-top:10px">
+        <summary class="dim" style="cursor:pointer">Also: bookmarklet (desktop Chrome only)</summary>
+        <p class="dim" style="margin-top:6px">Overlays fares and seats on Frontier's own page. Drag to your bookmarks bar. Safari and Firefox block <code>javascript:</code> bookmarklets on pages that send a Content-Security-Policy, which Frontier does.</p>
+        <p><a class="bookmarklet" id="bmLink" href="#" draggable="true">🎯 GoWild seats</a> <button id="bmCopy" class="ghost">Copy code</button></p>
+      </details>
     </details>
   </section>
 </main>
@@ -140,6 +162,107 @@ function ago(iso) {
   return m < 1 ? 'just now' : m < 60 ? `${m}m ago` : `${(m / 60).toFixed(1)}h ago`;
 }
 
+// ---- relay: the CORS-enabled fetcher you host once (src/worker.js) ----
+// Frontier answers a normal server request but sends no CORS headers, so this
+// page can never read it directly. The relay is the smallest possible thing
+// that closes that gap, and once it exists live seats land right in the cards
+// below instead of in a list of instructions.
+let RELAY = '';
+try { RELAY = localStorage.getItem('gw_relay') || ''; } catch (e) {}
+const relayParam = new URLSearchParams(location.search).get('relay');
+if (relayParam) { RELAY = relayParam.replace(/\/+$/, ''); try { localStorage.setItem('gw_relay', RELAY); } catch (e) {} }
+
+const SEATS = {};        // date -> { 'LAS-SFO': result }
+let seatsNote = '';
+
+// The route pairs this trip needs on a date. Nonstops first: LAS→SFO matters far
+// more than the DEN half of a RIC→DEN→LAS connection, and the list is capped.
+function tripPairs(date) {
+  const nonstop = [], connecting = [];
+  for (const view of [DATA && DATA.outbound && DATA.outbound[date], DATA && DATA.hop && DATA.hop[date]]) {
+    for (const p of (view && view.paths) || []) {
+      if (!p.via) { const k = p.from + '-' + p.to; if (nonstop.indexOf(k) < 0) nonstop.push(k); continue; }
+      for (const s of p.segments || []) { const k = s.from + '-' + s.to; if (connecting.indexOf(k) < 0) connecting.push(k); }
+    }
+  }
+  return nonstop.concat(connecting.filter((k) => nonstop.indexOf(k) < 0)).slice(0, 8);
+}
+
+// One relay call per route, sequentially, rendering as each lands.
+//
+// Not one batched call: Cloudflare's free tier caps CPU *per invocation*, and
+// parsing Frontier's ~600 KB page eight times over would blow through it. One
+// pair per request also paces the hits on Frontier and lets seats appear as
+// they arrive rather than after the slowest one.
+async function checkSeats() {
+  const date = $('obDate') && $('obDate').value;
+  if (!date) return;
+  if (!RELAY) { $('relayHelp').open = true; $('relayUrl').focus(); toast('No relay yet — set one up below (or tap a “check fares ↗” link)'); return; }
+  const pairs = tripPairs(date);
+  if (!pairs.length) { toast('No Frontier pairs for ' + dateLabel(date)); return; }
+  $('seatsBtn').disabled = true;
+  SEATS[date] = {};
+  let live = 0, blocked = false, failed = null;
+  for (let i = 0; i < pairs.length; i++) {
+    seatsNote = 'checking ' + (i + 1) + ' of ' + pairs.length + '…';
+    render();
+    try {
+      const r = await fetch(RELAY + '/seats?pairs=' + encodeURIComponent(pairs[i]) + '&date=' + encodeURIComponent(date));
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || ('HTTP ' + r.status));
+      for (const x of j.results || []) { SEATS[date][x.pair] = x; if (x.status === 'live') live++; }
+      SEATS[date]._checkedAt = j.checkedAt;
+      if (j.blocked) blocked = true;
+    } catch (e) { failed = e.message; break; }
+  }
+  seatsNote = failed ? 'Relay error: ' + failed
+    : blocked ? 'Frontier bot-blocked the relay on some routes — try again in a few minutes.' : '';
+  if (failed && !live) {
+    $('seatsBtn').disabled = false;
+    $('seatsBody').innerHTML = '<div class="panel">Could not reach the relay at <code>' + esc(RELAY) + '</code> — ' + esc(failed)
+      + '<div class="dim" style="margin-top:4px">Check it is deployed, then press <b>Test</b> under “Set up one-tap live seats”.</div></div>';
+    return;
+  }
+  render();
+  toast(live + ' of ' + pairs.length + ' routes returned live seats');
+  $('seatsBtn').disabled = false;
+}
+
+function seatsHTML() {
+  const date = $('obDate') && $('obDate').value;
+  const s = date && SEATS[date];
+  if (!RELAY) {
+    return '<div class="panel">Not connected yet. Right now, tapping a <b>&ldquo;check fares ↗&rdquo;</b> link above opens Frontier prefilled and shows the GoWild fare there.'
+      + '<div class="dim" style="margin-top:6px">To see seats <i>on this page</i> instead — one tap, any device, no computer running — open <b>Set up one-tap live seats</b> below.</div></div>';
+  }
+  if (!s) return '<div class="empty">Relay connected. Press <b>↻ check now</b> for live seats on ' + esc(dateLabel(date)) + '.</div>';
+  const pairsIn = Object.keys(s).filter((k) => k !== '_checkedAt');
+  if (!pairsIn.length) return '<div class="empty">' + esc(seatsNote || 'checking…') + '</div>';
+  let h = '';
+  for (const pair of Object.keys(s)) {
+    if (pair === '_checkedAt') continue;
+    const r = s[pair];
+    if (r.status !== 'live') {
+      h += '<div class="row">' + route(pair.split('-')[0], null, pair.split('-')[1])
+        + ' <span class="tag ' + (r.status === 'no-data' ? 'warn' : 'bad') + '">' + esc(r.status) + '</span>'
+        + '<div class="dim" style="margin-top:4px"><a target="_blank" rel="noopener" href="' + esc(r.url) + '">check fares ↗</a></div></div>';
+      continue;
+    }
+    h += '<div class="row">' + route(pair.split('-')[0], null, pair.split('-')[1]) + ' <span class="tag live">live</span> '
+      + '<span class="num">' + esc(r.gowildFlights) + ' GoWild flight(s) · ' + esc(r.seatsTotal) + ' seat(s)'
+      + (r.cheapestFare != null ? ' · from $' + esc(r.cheapestFare) : '') + '</span>';
+    for (const f of r.flights || []) {
+      h += '<div class="leg">' + (f.flightNumber ? '#' + esc(f.flightNumber) + ' ' : '') + esc(f.departure || '')
+        + ' · $' + esc(f.goWildFare == null ? '?' : f.goWildFare)
+        + ' · ' + (f.goWildSeatsRemaining != null ? esc(f.goWildSeatsRemaining) + ' seat(s) left' : 'available') + '</div>';
+    }
+    h += '<div class="dim" style="margin-top:4px"><a target="_blank" rel="noopener" href="' + esc(r.url) + '">book ↗</a></div></div>';
+  }
+  h += '<div class="dim" style="margin-top:6px">from your relay · ' + esc(ago(s._checkedAt))
+    + (seatsNote ? ' · ' + esc(seatsNote) : '') + '</div>';
+  return h;
+}
+
 function gowildHTML(d) {
   if (!d) return '<div class="empty">No data for this date — run Sync.</div>';
   let h = '<div class="note ' + (d.window && d.window.canBookNow ? 'ok' : 'warn') + '">' + esc(d.window && d.window.note) + '</div>';
@@ -155,6 +278,23 @@ function gowildHTML(d) {
       for (const f of p.live.flights ?? []) {
         h += '<div class="leg"><span class="tag live">live</span> ' + (f.flightNumber ? '#' + esc(f.flightNumber) + ' ' : '') + esc(f.departure || '')
           + ' · $' + esc(f.goWildFare ?? '?') + ' · ' + (f.goWildSeatsRemaining != null ? esc(f.goWildSeatsRemaining) + ' seat(s) left' : 'available') + '</div>';
+      }
+    } else {
+      // No synced/published data for this path — fall back to whatever the
+      // relay fetched from this device, per segment.
+      const relay = SEATS[d.date] || {};
+      const segs = (p.segments && p.segments.length) ? p.segments : [{ from: p.from, to: p.to }];
+      for (const s of segs) {
+        const r = relay[s.from + '-' + s.to];
+        if (!r) continue;
+        if (r.status !== 'live') { h += '<div class="leg"><span class="tag warn">relay</span> ' + esc(s.from + '→' + s.to) + ': ' + esc(r.status) + '</div>'; continue; }
+        if (!r.gowildFlights) { h += '<div class="leg"><span class="tag live">live</span> ' + esc(s.from + '→' + s.to) + ': no GoWild seats showing</div>'; continue; }
+        for (const f of r.flights || []) {
+          h += '<div class="leg"><span class="tag live">live</span> ' + esc(s.from + '→' + s.to) + ' '
+            + (f.flightNumber ? '#' + esc(f.flightNumber) + ' ' : '') + esc(f.departure || '')
+            + ' · $' + esc(f.goWildFare == null ? '?' : f.goWildFare)
+            + ' · ' + (f.goWildSeatsRemaining != null ? esc(f.goWildSeatsRemaining) + ' seat(s) left' : 'available') + '</div>';
+        }
       }
     }
     h += '</div>';
@@ -240,6 +380,8 @@ function render() {
     $('backupBody').innerHTML = bh || '<div class="empty">No backup data — run Sync.</div>';
 
     $('hotelsBody').innerHTML = hotelsHTML(DATA.hotels?.[$('hoCity').value]);
+
+    $('seatsBody').innerHTML = seatsHTML();
 
     const trackers = DATA.outbound?.[$('obDate').value]?.trackers ?? [];
     $('trackerLinks').innerHTML = trackers.length
@@ -474,6 +616,36 @@ async function copyBookmarklet(viaButton) {
 // copies it instead of doing nothing.
 $('bmLink').addEventListener('click', (e) => { e.preventDefault(); copyBookmarklet(false); });
 $('bmCopy').addEventListener('click', () => copyBookmarklet(true));
+
+// ---- relay controls ----
+$('relayUrl').value = RELAY;
+function setRelay(v) {
+  RELAY = String(v || '').trim().replace(/\/+$/, '');
+  try { RELAY ? localStorage.setItem('gw_relay', RELAY) : localStorage.removeItem('gw_relay'); } catch (e) {}
+  $('relayUrl').value = RELAY;
+  render();
+}
+$('relaySave').addEventListener('click', () => {
+  const v = $('relayUrl').value.trim();
+  if (v && !/^https?:\/\//i.test(v)) { toast('Relay URL must start with https://'); return; }
+  setRelay(v);
+  toast(RELAY ? 'Relay saved — press ↻ check now' : 'Relay cleared');
+});
+$('relayClear').addEventListener('click', () => { setRelay(''); toast('Relay cleared'); });
+$('relayTest').addEventListener('click', async () => {
+  const v = $('relayUrl').value.trim().replace(/\/+$/, '');
+  if (!v) { toast('Paste your relay URL first'); return; }
+  $('relayTest').disabled = true;
+  try {
+    const r = await fetch(v + '/health');
+    const j = await r.json();
+    if (j.service !== 'gowild-relay') throw new Error('that URL answered, but it is not a GoWild relay');
+    setRelay(v);
+    toast('Relay works ✓ — press ↻ check now');
+  } catch (e) { toast('Relay test failed: ' + e.message); }
+  $('relayTest').disabled = false;
+});
+$('seatsBtn').addEventListener('click', checkSeats);
 
 for (const id of ['obDate', 'hopDate', 'retFrom', 'retSort', 'retDate', 'buFrom', 'buDate', 'hoCity']) $(id).addEventListener('change', render);
 

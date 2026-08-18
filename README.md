@@ -23,6 +23,7 @@ node src/cli.js dashboard   # web UI at http://localhost:8787
 | 3. Come home | `node src/cli.js return --from SFO` | Every way east - GoWild, cash flights, miles, Amtrak, bus, mixed - ranked by total time, then cost |
 | Stuck out west? | `node src/cli.js backup --from LAS` | Cash fares and miles options across airlines, cheapest first, with positioning tips |
 | Where to stay | `node src/cli.js hotels --city vegas` | Vegas MGM Rewards + Caesars Rewards properties (public + member rate, resort fee, booking link); `--city sf` for Priceline Express Deals by star tier |
+| Live seats on your phone | `node src/cli.js phone` | An 8-action iPhone Shortcut that checks real GoWild seat counts from the phone itself — see [docs/RELAY.md](docs/RELAY.md) for the hosted alternative |
 
 Useful flags:
 
@@ -83,12 +84,22 @@ For mid-trip use with no computer and no server, the repo also ships a **static 
 
 1. **Enable Pages once**: repo Settings → Pages → Source: **GitHub Actions**. The `pages` workflow **builds `site/data.json` fresh, then deploys `site/`**, giving you a URL that works on your phone.
 2. **Sync on request** = rebuild + redeploy. The dashboard's **Sync** button (or Actions → *pages* → *Run workflow*) triggers `pages` as a `workflow_dispatch`, which runs a full live provider sync using your repo **Secrets** (put SERPAPI_KEY etc. in Settings → Secrets → Actions), regenerates `data.json`, and redeploys. Ordinary code pushes rebuild with **seed data only** (no paid API calls), so routine pushes never burn your SerpAPI quota. `data.json` is **generated at deploy time, never committed** — that's deliberate: a committed 600 KB single-line file was getting corrupted by branch merges.
-3. **Live GoWild seats on the phone — the reliable way.** Frontier serves GoWild fares to a signed-in pass holder on a normal connection and blocks datacenter servers, so neither this page nor the GitHub build can fetch them. Three things that do work, most reliable first:
-   1. **Tap a "check fares ↗" link** — opens Frontier prefilled for that route/date, signed in, fares right there. Nothing to install.
-   2. **`node src/cli.js publish`** — runs the sync from *your* connection (not blocked), then pushes `site/live-snapshot.json`; the next build folds it in, so the phone dashboard shows real fares and seat counts.
-   3. **`node src/cli.js dashboard`** — now binds all interfaces and prints a LAN address (`http://192.168.x.x:8787`), so a phone on the same Wi-Fi gets the real **↻ live seats** button.
+3. **Live GoWild seats on the phone — deploy the relay once.** Frontier publishes GoWild fares and seat counts on its own search page without a login, but a browser can't read another site's response (no CORS) and GitHub's build servers get bot-blocked. So something has to make that request for you. [`src/worker.js`](src/worker.js) is that something — ~100 lines on Cloudflare Workers' free tier:
 
-   A bookmarklet is still included as an optional extra, but it only works in Chrome — Safari and Firefox block `javascript:` bookmarklets on pages with a Content-Security-Policy, which Frontier sends.
+   ```bash
+   npm i -g wrangler && wrangler login
+   wrangler deploy      # prints https://gowild-relay.<you>.workers.dev
+   ```
+
+   Paste the URL into the dashboard under **Set up one-tap live seats**, press **↻ check now**, and real seat counts land in the seats card and in every route card — on cellular, on any device, with nothing running at home. Full details, including why it only ever talks to Frontier and why the dashboard calls it one route at a time, are in [docs/RELAY.md](docs/RELAY.md).
+
+   Don't want to host anything?
+   - **`node src/cli.js phone`** prints an 8-action **iPhone Shortcut** that makes the same request from the phone itself. Shortcuts isn't a browser, so CORS doesn't apply. One tap from the home screen, nothing hosted.
+   - **`node src/cli.js publish --install`** registers a background job (launchd/systemd) that syncs from your home connection every 30 minutes and pushes the result, so the dashboard is just fresh when you open it. (`publish` alone does it once; `--watch` runs it in the foreground.)
+   - **Tap a "check fares ↗" link** — Frontier opens prefilled and shows the fare itself. Zero setup, always works.
+   - **`node src/cli.js dashboard`** binds all interfaces and prints a LAN address, so a phone on the same Wi-Fi gets a live-seats button with no relay at all.
+
+   A bookmarklet is still included as an optional extra, but it only works in desktop Chrome — Safari and Firefox block `javascript:` bookmarklets on pages with a Content-Security-Policy, which Frontier sends.
 
 The static page renders precomputed views (outbound/hop over a rolling 10-day window, return plans from SFO/LAS both sorts, backup plans, hotels) and reads its same-origin `data.json`. Amtrak live status refreshes directly in the browser (Amtraker's API allows it). If the dashboard moves to a different fork, update the `OWNER`/`REPO`/`BRANCH` constants at the top of `site/index.html`.
 

@@ -480,3 +480,103 @@ test('awardOptions surfaces the cheapest live hit across sources', () => {
   assert.ok(options.every((o) => o.dataStatus === 'estimate' || o.dataStatus === 'live'));
   assert.ok(options.every((o) => 'source' in o));
 });
+
+// ---- GoWild relay (src/worker.js) ----
+// The relay is what makes live seats work on the phone: it fetches Frontier
+// server-side and answers with CORS headers. These tests stub global.fetch so
+// they run offline and never touch Frontier.
+
+const { handle, parsePairs } = await import('../src/worker.js');
+const { searchURL } = await import('../src/gowild-parse.js');
+
+const PAGE = 'x&quot;journeys&quot;:[{&quot;flights&quot;:['
+  + '{&quot;flightNumber&quot;:&quot;F91234&quot;,&quot;departureDate&quot;:&quot;2026-08-19T06:00&quot;,&quot;isGoWildFareEnabled&quot;:true,&quot;goWildFare&quot;:14.91,&quot;goWildFareSeatsRemaining&quot;:3},'
+  + '{&quot;flightNumber&quot;:&quot;F9999&quot;,&quot;departureDate&quot;:&quot;2026-08-19T19:00&quot;,&quot;isGoWildFareEnabled&quot;:true,&quot;goWildFare&quot;:9.11,&quot;goWildFareSeatsRemaining&quot;:1},'
+  + '{&quot;flightNumber&quot;:&quot;F9777&quot;,&quot;isGoWildFareEnabled&quot;:false}]}]y';
+
+function stubFetch(impl) {
+  const real = globalThis.fetch;
+  globalThis.fetch = impl;
+  return () => { globalThis.fetch = real; };
+}
+const call = (path) => handle(new Request('https://relay.test' + path));
+
+test('searchURL encodes the date the way Frontier expects', () => {
+  assert.equal(
+    searchURL('LAS', 'SFO', '2026-08-19'),
+    'https://booking.flyfrontier.com/Flight/InternalSelect?o1=LAS&d1=SFO&dd1=Aug%2019%2C%202026&ADT=1&mon=true',
+  );
+});
+
+test('relay parsePairs accepts real pairs and rejects everything else', () => {
+  assert.deepEqual(parsePairs('RIC-LAS,las-sfo'), [['RIC', 'LAS'], ['LAS', 'SFO']]);
+  assert.deepEqual(parsePairs('LAS-LAS'), [], 'same origin and destination is nonsense');
+  assert.deepEqual(parsePairs('evil.com-LAS,../-x'), [], 'not an open proxy');
+  assert.deepEqual(parsePairs('RIC-LAS,RIC-LAS'), [['RIC', 'LAS']], 'dedupes');
+  assert.equal(parsePairs('AAA-BBB,CCC-DDD,EEE-FFF,GGG-HHH,III-JJJ,KKK-LLL,MMM-NNN,OOO-PPP,QQQ-RRR').length, 8, 'caps at 8');
+});
+
+test('relay returns live seats with CORS headers so a phone can read it', async () => {
+  const seen = [];
+  const restore = stubFetch(async (url) => { seen.push(url); return new Response(PAGE, { status: 200 }); });
+  try {
+    const res = await call('/seats?pairs=LAS-SFO&date=2026-08-19');
+    assert.equal(res.headers.get('access-control-allow-origin'), '*', 'without this the browser cannot read it');
+    const body = await res.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.live, 1);
+    const r = body.results[0];
+    assert.equal(r.status, 'live');
+    assert.equal(r.gowildFlights, 2, 'the non-GoWild flight is excluded');
+    assert.equal(r.seatsTotal, 4);
+    assert.equal(r.cheapestFare, 9.11, 'cheapest first');
+    assert.equal(r.flights[0].flightNumber, 'F9999');
+    assert.match(seen[0], /o1=LAS&d1=SFO&dd1=Aug%2019%2C%202026/);
+  } finally { restore(); }
+});
+
+test('relay reports blocking and bad input honestly instead of pretending', async () => {
+  let restore = stubFetch(async () => new Response('nope', { status: 403 }));
+  try {
+    const body = await (await call('/seats?pairs=LAS-SFO&date=2026-08-19')).json();
+    assert.equal(body.blocked, true);
+    assert.equal(body.results[0].status, 'blocked');
+    assert.equal(body.results[0].httpStatus, 403);
+  } finally { restore(); }
+
+  restore = stubFetch(async () => new Response('<html>a page with no journeys</html>', { status: 200 }));
+  try {
+    const body = await (await call('/seats?pairs=LAS-SFO&date=2026-08-19')).json();
+    assert.equal(body.results[0].status, 'no-data');
+    assert.equal(body.blocked, false);
+  } finally { restore(); }
+
+  assert.equal((await call('/seats?pairs=LAS-SFO&date=tomorrow')).status, 400);
+  assert.equal((await call('/seats?date=2026-08-19')).status, 400);
+  assert.equal((await call('/nope')).status, 404);
+  const health = await (await call('/health')).json();
+  assert.equal(health.service, 'gowild-relay');
+});
+
+test('relay never fetches anything but Frontier, even for hostile pair input', async () => {
+  const seen = [];
+  const restore = stubFetch(async (url) => { seen.push(url); return new Response(PAGE, { status: 200 }); });
+  try {
+    await call('/seats?pairs=' + encodeURIComponent('LAS-SFO,http://169.254.169.254/latest-meta') + '&date=2026-08-19');
+    assert.equal(seen.length, 1);
+    assert.ok(seen.every((u) => u.startsWith('https://booking.flyfrontier.com/Flight/InternalSelect?')));
+  } finally { restore(); }
+});
+
+test('publish agent writes a service file that runs publish --watch', async () => {
+  const { unitFile } = await import('../src/publish.js');
+  const mac = unitFile('darwin');
+  assert.equal(mac.kind, 'launchd');
+  assert.match(mac.body, /<string>publish<\/string><string>--watch<\/string>/);
+  assert.match(mac.body, /<key>RunAtLoad<\/key><true\/>/);
+  const linux = unitFile('linux');
+  assert.equal(linux.kind, 'systemd');
+  assert.match(linux.body, /ExecStart=.*src\/cli\.js publish --watch/);
+  assert.match(linux.body, /Restart=always/);
+  assert.equal(unitFile('win32').kind, 'unsupported');
+});
