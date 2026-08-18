@@ -7,6 +7,7 @@ import { ROOT, loadJSON, todayISO, addDaysISO } from './util.js';
 import { gowildOptions, checkGowildAvailability } from './providers/frontier.js';
 import { backupCashOptions } from './providers/flights.js';
 import { awardOptions } from './providers/awards.js';
+import { hotelOptions } from './providers/hotels.js';
 import { liveStatus } from './providers/amtrak.js';
 import { planReturn } from './planner.js';
 import { syncAll, syncStatus } from './sync.js';
@@ -63,6 +64,8 @@ export function startServer(port = 8787) {
       } else if (url.pathname === '/api/backup') {
         const from = (q.get('from') || 'LAS').toUpperCase();
         json(res, 200, { cash: backupCashOptions(from, date), awards: awardOptions(from) });
+      } else if (url.pathname === '/api/hotels') {
+        json(res, 200, hotelOptions((q.get('city') || 'vegas').toLowerCase(), q.get('date') || undefined));
       } else {
         json(res, 404, { error: 'not found' });
       }

@@ -55,6 +55,11 @@
     <div id="backupBody" class="empty">loading&hellip;</div>
   </section>
 
+  <section class="wide" id="secHotels">
+    <h2>Hotels <select id="hoCity"><option value="vegas">Las Vegas</option><option value="sf">San Francisco</option></select></h2>
+    <div id="hotelsBody" class="empty">loading&hellip;</div>
+  </section>
+
   <section id="secAmtrak"><h2>Amtrak live <button id="amtrakBtn" class="ghost">↻</button></h2><div id="amtrakBody" class="empty">from last sync&hellip;</div></section>
 
   <section id="secBookmarklet">
@@ -155,7 +160,7 @@ function render() {
       $('statusBody').innerHTML = '<div class="panel">No <code>data.json</code> yet. Run a sync once — press <b>Sync</b> above, or open the '
         + '<a target="_blank" rel="noopener" href="' + ACTIONS_URL + '">Actions tab ↗</a> and click <b>Run workflow</b> — then reload. '
         + '(Opening this file directly with <code>file://</code> also blocks data loading — serve it over http or use the Pages URL.)</div>';
-      for (const id of ['outboundBody', 'hopBody', 'returnBody', 'backupBody', 'amtrakBody']) $(id).innerHTML = '<div class="empty">Waiting for first sync…</div>';
+      for (const id of ['outboundBody', 'hopBody', 'returnBody', 'backupBody', 'hotelsBody', 'amtrakBody']) $(id).innerHTML = '<div class="empty">Waiting for first sync…</div>';
       return;
     }
     $('tripline').textContent = DATA.trip || '';
@@ -215,10 +220,37 @@ function render() {
     }
     $('backupBody').innerHTML = bh || '<div class="empty">No backup data — run Sync.</div>';
 
+    $('hotelsBody').innerHTML = hotelsHTML(DATA.hotels?.[$('hoCity').value]);
+
     renderAmtrak(DATA.amtrakLive ?? []);
   } catch (err) {
     showError('rendering the dashboard', err);
   }
+}
+
+function hotelsHTML(o) {
+  if (!o || o.error) return '<div class="empty">' + esc(o?.error || 'No hotel data — run Sync.') + '</div>';
+  let h = '<div class="dim" style="margin-bottom:6px">' + esc(o.city) + ' · ' + esc(o.checkIn) + ' → ' + esc(o.checkOut) + ' (' + o.nights + ' night' + (o.nights > 1 ? 's' : '') + ')</div>';
+  for (const g of o.groups) {
+    h += '<div style="margin-top:10px"><b>' + esc(g.brand) + '</b></div><div class="dim" style="margin-bottom:4px">' + esc(g.pricingNote) + '</div>';
+    if (g.express) {
+      for (const t of g.tiers) {
+        h += '<div class="row"><span class="tag">' + esc(t.star) + '★</span><b>' + esc(t.name) + '</b> <span class="dim">public ' + money(t.publicUSD) + '/night · <b class="num">express ~' + money(t.expressUSD) + '</b>/night</span></div>';
+      }
+      h += '<div class="dim">Neighborhoods: ' + esc((g.neighborhoods || []).join(', ')) + '</div>';
+      if (g.note) h += '<div class="dim">' + esc(g.note) + '</div>';
+      if (g.bookLink) h += '<div style="margin-top:4px"><a class="bookmarklet" target="_blank" rel="noopener" href="' + esc(g.bookLink) + '">Priceline Express Deals ↗</a></div>';
+    } else {
+      for (const p of g.properties) {
+        h += '<div class="row"><b>' + esc(p.name) + '</b> <span class="tag">' + esc(p.tier) + '</span>'
+          + (p.dataStatus === 'live' ? ' <span class="tag live">live</span>' : '')
+          + '<div class="dim" style="margin-top:2px">public <b class="num">' + money(p.publicUSD) + '</b>/night'
+          + (p.memberUSD ? ' · member ~<b class="num">' + money(p.memberUSD) + '</b>' : '') + ' · +$' + p.resortFeeUSD + ' resort fee'
+          + ' · <a target="_blank" rel="noopener" href="' + esc(p.bookLink) + '">book ↗</a></div></div>';
+      }
+    }
+  }
+  return h;
 }
 
 function renderAmtrak(trains) {
@@ -332,7 +364,7 @@ $('bmCopy').addEventListener('click', async () => {
   } catch (e) { toast('Copy failed — long-press the green button and choose Copy Link instead.'); }
 });
 
-for (const id of ['obDate', 'hopDate', 'retFrom', 'retSort', 'retDate', 'buFrom', 'buDate']) $(id).addEventListener('change', render);
+for (const id of ['obDate', 'hopDate', 'retFrom', 'retSort', 'retDate', 'buFrom', 'buDate', 'hoCity']) $(id).addEventListener('change', render);
 
 loadData().then((d) => { DATA = d; render(); }).catch((err) => showError('loading data', err));
 </script>

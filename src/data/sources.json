@@ -54,6 +54,13 @@
     "attempts": [],
     "deepLink": "https://shop.flixbus.com/search?departureCity={fromCity}&arrivalCity={toCity}&rideDate={date}"
   },
+  "hotels": {
+    "_comment": "Live public hotel rates via SerpAPI google_hotels (needs SERPAPI_KEY). Broad per-city queries keep the search count low (~3/sync); property names are matched to hotels.json. Member/express rates are captured via the booking links in hotels.json, not here.",
+    "googleHotelsQueries": {
+      "vegas": ["MGM Resorts Las Vegas", "Caesars Entertainment Las Vegas hotels"],
+      "sf": ["San Francisco hotels"]
+    }
+  },
   "deepLinks": {
     "googleFlights": "https://www.google.com/travel/flights?q=Flights%20from%20{origin}%20to%20{dest}%20on%20{date}%20one%20way",
     "kayak": "https://www.kayak.com/flights/{origin}-{dest}/{date}?sort=bestflight_a",

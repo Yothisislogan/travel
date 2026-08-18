@@ -6,6 +6,7 @@ import { gowildOptions, bookingWindow, isBlackout, gowildRules } from './provide
 import { backupCashOptions } from './providers/flights.js';
 import { awardOptions } from './providers/awards.js';
 import { liveStatus } from './providers/amtrak.js';
+import { hotelOptions } from './providers/hotels.js';
 import { planReturn } from './planner.js';
 import { syncAll, syncStatus, SECTIONS } from './sync.js';
 
@@ -160,6 +161,34 @@ async function main() {
       break;
     }
 
+    case 'hotels': {
+      const cityKey = (flags.city || 'vegas').toLowerCase();
+      const o = hotelOptions(cityKey, flags.date);
+      if (o.error) { console.log(o.error); break; }
+      console.log(B(`\nHotels in ${o.city} - ${o.checkIn} to ${o.checkOut} (${o.nights} night${o.nights > 1 ? 's' : ''})`));
+      for (const g of o.groups) {
+        console.log(B(`\n  ${g.brand}`));
+        console.log(dim(`  ${g.pricingNote}`));
+        if (g.express) {
+          for (const t of g.tiers) {
+            console.log(`  ${t.name}`);
+            console.log(`    public ~${fmtMoney(t.publicUSD)}/night · express ~${fmtMoney(t.expressUSD)}/night [estimate]`);
+          }
+          console.log(dim(`  Neighborhoods: ${g.neighborhoods.join(', ')}`));
+          console.log(dim(`  ${g.note}`));
+          console.log(dim(`  book: ${g.bookLink}`));
+        } else {
+          for (const p of g.properties) {
+            const member = p.memberUSD ? ` · member ~${fmtMoney(p.memberUSD)}` : '';
+            console.log(`  ${p.name.padEnd(22)} ${fmtMoney(p.publicUSD)}/night${member} · +$${p.resortFeeUSD} resort fee [${p.dataStatus}] ${dim(p.tier)}`);
+            console.log(dim(`    book: ${p.bookLink}`));
+          }
+        }
+      }
+      console.log(dim('\n  Live public rates need SERPAPI_KEY + `sync`; member/express rates show when you book via the link (logged in).'));
+      break;
+    }
+
     case 'dashboard': {
       const { startServer } = await import('./server.js');
       startServer(+(process.env.PORT || 8787));
@@ -186,6 +215,7 @@ Usage: node src/cli.js <command> [flags]
          [--sort cost]       ...sorted by cost then time
          [--to RIC] [--max N]
   backup [--from LAS]        Stuck-out-west plan: cash + miles options
+  hotels [--city vegas|sf]   Vegas (MGM Rewards + Caesars Rewards) / SF (Priceline Express)
   rules                      Show GoWild rules data
   dashboard                  Web dashboard on http://localhost:8787
 

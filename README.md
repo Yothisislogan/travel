@@ -22,6 +22,7 @@ node src/cli.js dashboard   # web UI at http://localhost:8787
 | 2. Vegas → Bay Area | `node src/cli.js hop` | GoWild paths LAS → SFO/OAK/SJC |
 | 3. Come home | `node src/cli.js return --from SFO` | Every way east - GoWild, cash flights, miles, Amtrak, bus, mixed - ranked by total time, then cost |
 | Stuck out west? | `node src/cli.js backup --from LAS` | Cash fares and miles options across airlines, cheapest first, with positioning tips |
+| Where to stay | `node src/cli.js hotels --city vegas` | Vegas MGM Rewards + Caesars Rewards properties (public + member rate, resort fee, booking link); `--city sf` for Priceline Express Deals by star tier |
 
 Useful flags:
 
@@ -54,6 +55,7 @@ GoWild fares are **capacity-controlled and normally bookable starting the day be
 | Award (miles) | [Seats.aero Partner API](https://seats.aero) key and/or the [Apify flight-award-scraper](https://apify.com/igolaizola/flight-award-scraper) (`APIFY_TOKEN`) — set either or both in `.env`; results merge, cheapest wins | Seed miles estimates + program search links |
 | Amtrak | [Amtraker](https://amtraker.com) live train status - free, no key | Seed schedules/fares |
 | Intercity bus | (no stable public API) | Seed estimates + FlixBus/Greyhound links |
+| Hotels | [SerpAPI](https://serpapi.com) `google_hotels` for live public rates (reuses `SERPAPI_KEY`) | Seed nightly ranges + member/express booking links. MGM Rewards / Caesars Rewards member rates and Priceline Express opaque rates are captured by booking through the linked source (logged in) — like GoWild, they aren't in any public API |
 
 ```bash
 cp .env.example .env   # then add any keys you have

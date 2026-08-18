@@ -68,6 +68,15 @@
     </div>
     <div id="backupBody" class="empty">loading&hellip;</div>
   </section>
+
+  <section id="secHotels" class="wide">
+    <h2>Hotels</h2>
+    <div class="controls">
+      <select id="hoCity"><option value="vegas">Las Vegas — MGM &amp; Caesars Rewards</option><option value="sf">San Francisco — Priceline Express</option></select>
+      <button data-sync="hotels" class="ghost">↻ Refresh live rates</button>
+    </div>
+    <div id="hotelsBody" class="empty">loading&hellip;</div>
+  </section>
 </main>
 <div id="toast"></div>
 <script>
@@ -196,6 +205,36 @@ async function loadBackup() {
 function guard(fn, bodyId, label) {
   return fn().catch((e) => { if (bodyId) $(bodyId).innerHTML = '<div class="note bad">Couldn\'t load ' + label + ': ' + esc(e.message) + '</div>'; });
 }
+function hotelsHTML(o) {
+  if (!o || o.error) return '<div class="empty">' + esc(o?.error || 'No hotel data.') + '</div>';
+  let h = '<div class="dim" style="margin-bottom:6px">' + esc(o.city) + ' · ' + esc(o.checkIn) + ' → ' + esc(o.checkOut) + ' (' + o.nights + ' night' + (o.nights > 1 ? 's' : '') + ')</div>';
+  for (const g of o.groups) {
+    h += '<div style="margin-top:10px"><b>' + esc(g.brand) + '</b></div><div class="dim" style="margin-bottom:4px">' + esc(g.pricingNote) + '</div>';
+    if (g.express) {
+      for (const t of g.tiers) {
+        h += '<div class="row"><span class="tag">' + esc(t.star) + '★</span><b>' + esc(t.name) + '</b> <span class="dim">public ' + money(t.publicUSD) + '/night · <b class="num">express ~' + money(t.expressUSD) + '</b>/night</span></div>';
+      }
+      h += '<div class="dim">Neighborhoods: ' + esc((g.neighborhoods || []).join(', ')) + '</div>';
+      if (g.note) h += '<div class="dim">' + esc(g.note) + '</div>';
+      if (g.bookLink) h += '<div style="margin-top:4px"><a class="bookmarklet" target="_blank" rel="noopener" href="' + esc(g.bookLink) + '">Priceline Express Deals ↗</a></div>';
+    } else {
+      for (const p of g.properties) {
+        h += '<div class="row"><b>' + esc(p.name) + '</b> <span class="tag">' + esc(p.tier) + '</span>'
+          + (p.dataStatus === 'live' ? ' <span class="tag live">live</span>' : '')
+          + '<div class="dim" style="margin-top:2px">public <b class="num">' + money(p.publicUSD) + '</b>/night'
+          + (p.memberUSD ? ' · member ~<b class="num">' + money(p.memberUSD) + '</b>' : '') + ' · +$' + p.resortFeeUSD + ' resort fee'
+          + ' · <a target="_blank" rel="noopener" href="' + esc(p.bookLink) + '">book ↗</a></div></div>';
+      }
+    }
+  }
+  return h;
+}
+
+async function loadHotels() {
+  const o = await api('/api/hotels?city=' + $('hoCity').value + '&date=' + $('date').value);
+  $('hotelsBody').innerHTML = hotelsHTML(o);
+}
+
 async function refreshAll() {
   await Promise.allSettled([
     guard(loadStatus, 'statusBody', 'status'),
@@ -203,6 +242,7 @@ async function refreshAll() {
     guard(loadHop, 'hopBody', 'the Vegas hop'),
     guard(loadReturn, 'returnBody', 'return plans'),
     guard(loadBackup, 'backupBody', 'backup options'),
+    guard(loadHotels, 'hotelsBody', 'hotels'),
   ]);
 }
 
@@ -249,7 +289,7 @@ document.addEventListener('click', async (e) => {
   btn.disabled = false;
 });
 $('retGo').addEventListener('click', () => guard(loadReturn, 'returnBody', 'return plans'));
-for (const id of ['date', 'obFrom', 'retFrom', 'retSort', 'retTo', 'buFrom']) $(id).addEventListener('change', refreshAll);
+for (const id of ['date', 'obFrom', 'retFrom', 'retSort', 'retTo', 'buFrom', 'hoCity']) $(id).addEventListener('change', refreshAll);
 refreshAll();
 </script>
 </body>

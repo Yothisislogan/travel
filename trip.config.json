@@ -24,6 +24,11 @@
     "maxResults": 12,
     "allowModes": ["gowild", "flight", "award", "train", "bus", "transit"]
   },
+  "hotels": {
+    "vegasCheckIn": null,
+    "nights": 2,
+    "_comment": "vegasCheckIn null = default to tomorrow. nights applies to the nightly search window."
+  },
   "sync": {
     "staleAfterHours": 6
   }

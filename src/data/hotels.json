@@ -1,0 +1,65 @@
+{
+  "_comment": "Hotels for the trip. Live nightly prices come from SerpAPI google_hotels on sync (public rates); the member/express rate is captured by booking through the linked source while logged in. typicalUSD = seed nightly range (public rate) as fallback. resortFeeUSD = per-night resort fee (usually NOT in the nightly rate). memberDiscount = rough member savings vs public.",
+  "asOf": "2026-08-18",
+  "cities": {
+    "vegas": {
+      "label": "Las Vegas",
+      "groups": [
+        {
+          "brand": "MGM Rewards",
+          "program": "MGM Rewards",
+          "pricingNote": "Sign in on mgmresorts.com to see MGM Rewards member rates; members get ~10-30% off public rates on promo dates, and resort fees are waived on comped offers at higher tiers.",
+          "bookBase": "https://www.mgmresorts.com/en/hotels/{slug}.html",
+          "properties": [
+            { "name": "Bellagio", "slug": "bellagio", "tier": "luxury", "typicalUSD": { "min": 250, "max": 520 }, "resortFeeUSD": 51 },
+            { "name": "ARIA", "slug": "aria", "tier": "luxury", "typicalUSD": { "min": 200, "max": 460 }, "resortFeeUSD": 51 },
+            { "name": "The Cosmopolitan", "slug": "the-cosmopolitan-of-las-vegas", "tier": "luxury", "typicalUSD": { "min": 250, "max": 520 }, "resortFeeUSD": 50 },
+            { "name": "Vdara", "slug": "vdara", "tier": "luxury (non-gaming)", "typicalUSD": { "min": 180, "max": 360 }, "resortFeeUSD": 45 },
+            { "name": "Park MGM", "slug": "park-mgm", "tier": "upper-mid", "typicalUSD": { "min": 150, "max": 320 }, "resortFeeUSD": 45 },
+            { "name": "Mandalay Bay", "slug": "mandalay-bay", "tier": "upper-mid", "typicalUSD": { "min": 160, "max": 350 }, "resortFeeUSD": 45 },
+            { "name": "MGM Grand", "slug": "mgm-grand", "tier": "mid", "typicalUSD": { "min": 120, "max": 300 }, "resortFeeUSD": 45 },
+            { "name": "New York-New York", "slug": "new-york-new-york", "tier": "mid", "typicalUSD": { "min": 110, "max": 260 }, "resortFeeUSD": 45 },
+            { "name": "Luxor", "slug": "luxor", "tier": "value", "typicalUSD": { "min": 70, "max": 180 }, "resortFeeUSD": 44 },
+            { "name": "Excalibur", "slug": "excalibur", "tier": "value", "typicalUSD": { "min": 55, "max": 160 }, "resortFeeUSD": 44 }
+          ]
+        },
+        {
+          "brand": "Caesars Rewards",
+          "program": "Caesars Rewards",
+          "pricingNote": "Sign in on caesars.com/las-vegas to see Caesars Rewards Member Prices (~10%+ off public); Diamond+ tiers waive resort fees.",
+          "bookBase": "https://www.caesars.com/{slug}",
+          "properties": [
+            { "name": "Caesars Palace", "slug": "caesars-palace", "tier": "luxury", "typicalUSD": { "min": 200, "max": 470 }, "resortFeeUSD": 52 },
+            { "name": "Nobu Hotel", "slug": "nobu", "tier": "luxury boutique", "typicalUSD": { "min": 220, "max": 460 }, "resortFeeUSD": 52 },
+            { "name": "The Cromwell", "slug": "the-cromwell", "tier": "boutique", "typicalUSD": { "min": 180, "max": 380 }, "resortFeeUSD": 45 },
+            { "name": "Paris Las Vegas", "slug": "paris-las-vegas", "tier": "upper-mid", "typicalUSD": { "min": 140, "max": 310 }, "resortFeeUSD": 45 },
+            { "name": "Planet Hollywood", "slug": "planet-hollywood", "tier": "upper-mid", "typicalUSD": { "min": 130, "max": 300 }, "resortFeeUSD": 45 },
+            { "name": "Horseshoe Las Vegas", "slug": "horseshoe-las-vegas", "tier": "mid", "typicalUSD": { "min": 90, "max": 220 }, "resortFeeUSD": 45 },
+            { "name": "Flamingo", "slug": "flamingo-las-vegas", "tier": "mid/value", "typicalUSD": { "min": 80, "max": 200 }, "resortFeeUSD": 45 },
+            { "name": "The LINQ", "slug": "the-linq", "tier": "mid/value", "typicalUSD": { "min": 90, "max": 210 }, "resortFeeUSD": 45 },
+            { "name": "Harrah's Las Vegas", "slug": "harrahs-las-vegas", "tier": "value", "typicalUSD": { "min": 80, "max": 190 }, "resortFeeUSD": 42 }
+          ]
+        }
+      ]
+    },
+    "sf": {
+      "label": "San Francisco",
+      "groups": [
+        {
+          "brand": "Priceline Express Deals",
+          "program": "Priceline Express Deals",
+          "pricingNote": "Express Deals are opaque: you see star rating, neighborhood, guest rating and amenities, but NOT the hotel name until after you pay. Discounts run ~20-60% off. Pick by neighborhood + star tier; you pay upfront and the hotel is revealed on confirmation.",
+          "bookBase": "https://www.priceline.com/hotel-deals/en-us/P3000002244/hotels-in-san-francisco.ssp",
+          "express": true,
+          "tiers": [
+            { "name": "3-star (SoMa / Financial District / Union Square)", "star": 3, "typicalUSD": { "min": 90, "max": 150 } },
+            { "name": "4-star (Union Square / Nob Hill / Embarcadero)", "star": 4, "typicalUSD": { "min": 130, "max": 240 } },
+            { "name": "4.5-5 star (luxury - Nob Hill / FiDi)", "star": 5, "typicalUSD": { "min": 220, "max": 400 } }
+          ],
+          "neighborhoods": ["Union Square", "SoMa", "Financial District", "Fisherman's Wharf", "Nob Hill", "Embarcadero"],
+          "note": "Airport is SFO but these are downtown SF Express Deals; near-SFO (South San Francisco) deals run cheaper (~$63+) if you're staying by the airport - search P3000002333."
+        }
+      ]
+    }
+  }
+}
