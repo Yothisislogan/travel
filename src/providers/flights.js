@@ -106,22 +106,44 @@ async function amadeusSearch(auth, from, to, date) {
 }
 
 // ---- SerpAPI google_flights ----
+// departure_id/arrival_id accept COMMA-SEPARATED airport codes, and the whole
+// multi-airport query is billed as ONE search. So all 11 of this trip's markets
+// are priced in a single call instead of 11 - roughly 11x more syncs per quota.
+// Each returned itinerary names its own airports, so results map back to their
+// market; any market Google omits simply stays a seed estimate.
 
-async function serpApiSearch(from, to, date) {
-  const url = `https://serpapi.com/search.json?engine=google_flights&departure_id=${from}&arrival_id=${to}&outbound_date=${date}&type=2&currency=USD&hl=en&api_key=${process.env.SERPAPI_KEY}`;
-  const res = await fetchJSON(url, { timeoutMs: 25000 });
+export function parseSerpFlights(data, { allowedMarkets = null } = {}) {
+  const all = [...(data?.best_flights ?? []), ...(data?.other_flights ?? [])];
+  const offers = {};
+  for (const o of all) {
+    const legs = Array.isArray(o?.flights) ? o.flights : [];
+    if (!legs.length) continue;
+    const from = legs[0]?.departure_airport?.id;
+    const to = legs[legs.length - 1]?.arrival_airport?.id;
+    const priceUSD = +o?.price;
+    if (!from || !to || !Number.isFinite(priceUSD)) continue;
+    const key = `${from}-${to}`;
+    if (allowedMarkets && !allowedMarkets.has(key)) continue;
+    if (offers[key] && offers[key].priceUSD <= priceUSD) continue;
+    offers[key] = {
+      priceUSD,
+      carrier: legs[0]?.airline ?? null,
+      durationHours: Number.isFinite(+o?.total_duration) ? +(+o.total_duration / 60).toFixed(2) : null,
+      stops: legs.length - 1,
+    };
+  }
+  return offers;
+}
+
+async function serpApiBatchSearch(origins, dests, date) {
+  const url = 'https://serpapi.com/search.json?engine=google_flights'
+    + `&departure_id=${origins.join('%2C')}&arrival_id=${dests.join('%2C')}`
+    + `&outbound_date=${date}&type=2&currency=USD&hl=en&gl=us&api_key=${process.env.SERPAPI_KEY}`;
+  const res = await fetchJSON(url, { timeoutMs: 30000 });
   if (!res.ok) throw new Error(`SerpAPI HTTP ${res.status}`);
-  const all = [...(res.data?.best_flights ?? []), ...(res.data?.other_flights ?? [])];
-  const cheapest = all
-    .map((o) => ({
-      priceUSD: +o.price,
-      carrier: o.flights?.[0]?.airline,
-      durationHours: o.total_duration ? +(o.total_duration / 60).toFixed(2) : null,
-      stops: (o.flights?.length ?? 1) - 1,
-    }))
-    .filter((o) => Number.isFinite(o.priceUSD))
-    .sort((a, b) => a.priceUSD - b.priceUSD)[0];
-  return cheapest ?? null;
+  if (res.data?.error) throw new Error(`SerpAPI: ${res.data.error}`);
+  const allowed = new Set(Object.keys(seed.markets));
+  return parseSerpFlights(res.data, { allowedMarkets: allowed });
 }
 
 async function priceAllMarkets(searchOne) {
@@ -146,11 +168,20 @@ export async function sync({ date } = {}) {
   const searchDate = date ?? addDaysISO(todayISO(), 1);
 
   if (process.env.SERPAPI_KEY) {
-    const { offers, errors } = await priceAllMarkets((f, t) => serpApiSearch(f, t, searchDate));
+    let offers = {};
+    const errors = [];
+    try {
+      offers = await serpApiBatchSearch(WEST_ORIGINS, EAST_TARGETS, searchDate);
+    } catch (err) {
+      errors.push(err.message);
+    }
+    const n = Object.keys(offers).length;
     return writeSection('flights', {
-      status: Object.keys(offers).length ? 'live' : 'error',
-      data: { searchDate, offers, errors, source: 'serpapi' },
-      notes: `SerpAPI (Google Flights) for ${searchDate}: ${Object.keys(offers).length} markets priced (all carriers).`,
+      status: n ? 'live' : 'error',
+      data: { searchDate, offers, errors, source: 'serpapi', searchesUsed: 1 },
+      notes: n
+        ? `SerpAPI (Google Flights) for ${searchDate}: ${n} markets priced from 1 batched search (all carriers).`
+        : `SerpAPI returned no priced markets for ${searchDate}${errors.length ? ` (${errors[0]})` : ''}. Using seed estimates.`,
     });
   }
 

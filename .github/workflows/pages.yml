@@ -50,6 +50,7 @@ jobs:
           AMADEUS_CLIENT_SECRET: ${{ secrets.AMADEUS_CLIENT_SECRET }}
           SEATS_AERO_API_KEY: ${{ secrets.SEATS_AERO_API_KEY }}
           APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
 
       # SEED build: code pushes just rebuild the page from seed data - no API
       # calls, no quota. The page says so and points at the Sync button.

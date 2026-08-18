@@ -44,21 +44,48 @@
       "endDate": "{endDate}",
       "cabin": "economy"
     },
-    "origins": ["LAS", "SFO"],
-    "destinations": ["RIC", "ORF", "IAD", "DCA"],
+    "origins": [
+      "LAS",
+      "SFO"
+    ],
+    "destinations": [
+      "RIC",
+      "ORF",
+      "IAD",
+      "DCA"
+    ],
     "maxDestinations": 4,
     "maxRuns": 8,
     "dateWindowDays": 2
   },
   "flixbus": {
+    "_comment": "FlixBus's own search API needs no key and covers Greyhound too (Greyhound moved onto FlixBus's booking platform in 2023). cityNames map our place codes to what FlixBus's autocomplete expects; resolved UUIDs get cached into the snapshot on sync. Paste known UUIDs into cityIds to skip the lookup.",
+    "autocomplete": "https://global.api.flixbus.com/search/autocomplete/cities",
+    "search": "https://global.api.flixbus.com/search/service/v4/search",
+    "cityNames": {
+      "LAS_BUS": "Las Vegas",
+      "LA_BUS": "Los Angeles",
+      "SF_BUS": "San Francisco",
+      "DEN_BUS": "Denver",
+      "CHI_BUS": "Chicago",
+      "DC_BUS": "Washington DC",
+      "RIC_BUS": "Richmond",
+      "NFK_BUS": "Norfolk"
+    },
+    "cityIds": {},
     "attempts": [],
     "deepLink": "https://shop.flixbus.com/search?departureCity={fromCity}&arrivalCity={toCity}&rideDate={date}"
   },
   "hotels": {
     "_comment": "Live public hotel rates via SerpAPI google_hotels (needs SERPAPI_KEY). Broad per-city queries keep the search count low (~3/sync); property names are matched to hotels.json. Member/express rates are captured via the booking links in hotels.json, not here.",
     "googleHotelsQueries": {
-      "vegas": ["MGM Resorts Las Vegas", "Caesars Entertainment Las Vegas hotels"],
-      "sf": ["San Francisco hotels"]
+      "vegas": [
+        "MGM Resorts Las Vegas",
+        "Caesars Entertainment Las Vegas hotels"
+      ],
+      "sf": [
+        "San Francisco hotels"
+      ]
     }
   },
   "deepLinks": {
@@ -67,5 +94,18 @@
     "amtrak": "https://www.amtrak.com/tickets/departure.html?wdf_origin={origin}&wdf_destination={dest}&departdate={date}",
     "greyhound": "https://www.greyhound.com",
     "_amtrakNote": "Historical prefill pattern - Amtrak SPA deep links are not officially documented; if params stop prefilling, the page still opens the booking search."
+  },
+  "priceline": {
+    "_comment": "Priceline Express Deals via the RapidAPI priceline-com-provider listing (a passthrough to Priceline Partner Network's getExpress.Results). Set RAPIDAPI_KEY to enable. READ-ONLY: the listing exposes no Express.Book, so booking still happens on priceline.com. Express availability depends on the reseller's upstream PPN tier and can change without notice.",
+    "host": "priceline-com-provider.p.rapidapi.com",
+    "expressPath": "/v2/hotels/expressResults",
+    "sid": "iSiX639",
+    "cities": {
+      "sf": {
+        "latitude": 37.7749,
+        "longitude": -122.4194,
+        "radius": 10
+      }
+    }
   }
 }

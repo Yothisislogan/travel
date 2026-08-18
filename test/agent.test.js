@@ -287,6 +287,83 @@ test('hotelOptions: unknown city returns an error, never throws', async () => {
   assert.ok(o.error && o.error.includes('Unknown city'));
 });
 
+test('parseSerpFlights maps a batched multi-airport search back to markets', async () => {
+  const { parseSerpFlights } = await import('../src/providers/flights.js');
+  const data = {
+    best_flights: [{
+      price: 214, total_duration: 330,
+      flights: [{ departure_airport: { id: 'SFO' }, arrival_airport: { id: 'IAD' }, airline: 'United' }],
+    }],
+    other_flights: [
+      { // pricier SFO-IAD - must lose to the 214
+        price: 402, total_duration: 400,
+        flights: [{ departure_airport: { id: 'SFO' }, arrival_airport: { id: 'IAD' }, airline: 'Delta' }],
+      },
+      { // a connection: market is first departure -> last arrival
+        price: 158, total_duration: 600,
+        flights: [
+          { departure_airport: { id: 'LAS' }, arrival_airport: { id: 'CLT' }, airline: 'American' },
+          { departure_airport: { id: 'CLT' }, arrival_airport: { id: 'RIC' }, airline: 'American' },
+        ],
+      },
+      { price: 99, flights: [{ departure_airport: { id: 'LAS' }, arrival_airport: { id: 'XXX' }, airline: 'Nope' }] },
+    ],
+  };
+  const offers = parseSerpFlights(data, { allowedMarkets: new Set(['SFO-IAD', 'LAS-RIC']) });
+  assert.deepEqual(Object.keys(offers).sort(), ['LAS-RIC', 'SFO-IAD']);
+  assert.equal(offers['SFO-IAD'].priceUSD, 214, 'keeps the cheapest per market');
+  assert.equal(offers['SFO-IAD'].durationHours, 5.5);
+  assert.equal(offers['SFO-IAD'].stops, 0);
+  assert.equal(offers['LAS-RIC'].stops, 1, 'two legs = 1 stop');
+  assert.equal(offers['LAS-RIC'].carrier, 'American');
+  assert.equal(offers['LAS-XXX'], undefined, 'markets outside the allow-list are dropped');
+  assert.deepEqual(parseSerpFlights(null), {});
+  assert.deepEqual(parseSerpFlights({ best_flights: [{}] }), {});
+});
+
+test('parseFlixTrips picks the cheapest available bus fare', async () => {
+  const { parseFlixTrips, flixDate } = await import('../src/providers/bus.js');
+  assert.equal(flixDate('2026-09-05'), '05.09.2026');
+  const data = {
+    trips: [{
+      results: {
+        a: { price: { total: 44.99 }, duration: { hours: 5, minutes: 30 }, status: 'available', transfer_type: 'direct' },
+        b: { price: { total: 29.99 }, duration: { hours: 6, minutes: 0 }, status: 'available' },
+        c: { price: { total: 9.99 }, status: 'unavailable' },
+      },
+    }],
+  };
+  const best = parseFlixTrips(data);
+  assert.equal(best.priceUSD, 29.99, 'cheapest available wins, sold-out ignored');
+  assert.equal(best.hours, 6);
+  assert.equal(parseFlixTrips({ trips: [] }), null);
+  assert.equal(parseFlixTrips(null), null);
+});
+
+test('parseExpressResults extracts cheapest opaque rate per star tier', async () => {
+  const { parseExpressResults } = await import('../src/providers/hotels.js');
+  const data = {
+    getHotelExpress: {
+      results: {
+        hotels: [
+          { star_rating: 4, price_per_night: 148.5, neighborhood_name: 'Union Square', guest_rating: 8.4 },
+          { star_rating: 4, price_per_night: 131.0, neighborhood_name: 'SoMa' },
+          { star_rating: 3, price_per_night: 92.25, neighborhood_name: 'Financial District' },
+        ],
+      },
+    },
+  };
+  const tiers = parseExpressResults(data);
+  const four = tiers.find((t) => t.star === 4);
+  const three = tiers.find((t) => t.star === 3);
+  assert.equal(four.nightlyUSD, 131, 'cheapest 4-star wins');
+  assert.equal(four.neighborhood, 'SoMa');
+  assert.equal(three.nightlyUSD, 92);
+  assert.ok(tiers[0].star <= tiers[tiers.length - 1].star, 'sorted by star');
+  assert.deepEqual(parseExpressResults(null), []);
+  assert.deepEqual(parseExpressResults({ junk: true }), []);
+});
+
 test('normalizeProgram maps airline strings to display program names', () => {
   assert.equal(normalizeProgram('american'), 'American AAdvantage');
   assert.equal(normalizeProgram('UA'), 'United MileagePlus');

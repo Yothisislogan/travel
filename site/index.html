@@ -245,7 +245,10 @@ function hotelsHTML(o) {
     h += '<div style="margin-top:10px"><b>' + esc(g.brand) + '</b></div><div class="dim" style="margin-bottom:4px">' + esc(g.pricingNote) + '</div>';
     if (g.express) {
       for (const t of g.tiers) {
-        h += '<div class="row"><span class="tag">' + esc(t.star) + '★</span><b>' + esc(t.name) + '</b> <span class="dim">public ' + money(t.publicUSD) + '/night · <b class="num">express ~' + money(t.expressUSD) + '</b>/night</span></div>';
+        h += '<div class="row"><span class="tag">' + esc(t.star) + '★</span><b>' + esc(t.name) + '</b>'
+          + (t.dataStatus === 'live' ? ' <span class="tag live">live</span>' : '')
+          + ' <span class="dim">public ' + money(t.publicUSD) + '/night · <b class="num">express ' + (t.dataStatus === 'live' ? '' : '~') + money(t.expressUSD) + '</b>/night'
+          + (t.neighborhood ? ' · ' + esc(t.neighborhood) : '') + (t.guestRating ? ' · guest ' + esc(t.guestRating) : '') + '</span></div>';
       }
       h += '<div class="dim">Neighborhoods: ' + esc((g.neighborhoods || []).join(', ')) + '</div>';
       if (g.note) h += '<div class="dim">' + esc(g.note) + '</div>';

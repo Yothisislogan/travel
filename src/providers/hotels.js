@@ -60,14 +60,22 @@ export function hotelOptions(cityKey, dateISO) {
       : null;
 
     if (g.express) {
-      // Priceline Express Deals - opaque, presented by star tier.
-      const tiers = (g.tiers ?? []).map((t) => ({
-        name: t.name,
-        star: t.star,
-        publicUSD: t.typicalUSD,
-        expressUSD: applyDiscount(t.typicalUSD, g.brand),
-        dataStatus: 'estimate',
-      }));
+      // Priceline Express Deals - opaque, presented by star tier. Live rates
+      // (RapidAPI passthrough to PPN getExpress.Results) replace the estimate
+      // for whichever star tiers came back.
+      const liveExpress = snap?.status === 'live' ? snap.data?.express ?? [] : [];
+      const tiers = (g.tiers ?? []).map((t) => {
+        const hit = liveExpress.find((e) => Math.round(e.star ?? 0) === Math.round(t.star));
+        return {
+          name: t.name,
+          star: t.star,
+          publicUSD: t.typicalUSD,
+          expressUSD: hit ? { min: hit.nightlyUSD, max: hit.nightlyUSD } : applyDiscount(t.typicalUSD, g.brand),
+          neighborhood: hit?.neighborhood ?? null,
+          guestRating: hit?.guestRating ?? null,
+          dataStatus: hit ? 'live' : 'estimate',
+        };
+      });
       return {
         brand: g.brand,
         program: g.program,
@@ -101,6 +109,68 @@ export function hotelOptions(cityKey, dateISO) {
   return { city: city.label, cityKey, checkIn, checkOut, nights, groups };
 }
 
+// ---- Priceline Express Deals (RapidAPI priceline-com-provider) ----
+// This listing is a passthrough to Priceline Partner Network's official
+// getExpress.Results, so it returns real opaque Express rates. It exposes no
+// Express.Book endpoint, so rates are READ-ONLY here - you still book on
+// priceline.com via the link. Needs RAPIDAPI_KEY.
+
+const pick = (obj, keys) => {
+  for (const k of keys) if (obj?.[k] != null && obj[k] !== '') return obj[k];
+  return null;
+};
+
+export function parseExpressResults(data) {
+  // Response shape varies by output_version and by how the reseller wraps it,
+  // so search the payload for the first array of hotel-ish priced objects.
+  const seen = [];
+  const visit = (node, depth = 0) => {
+    if (!node || depth > 6) return;
+    if (Array.isArray(node)) {
+      for (const item of node) visit(item, depth + 1);
+      return;
+    }
+    if (typeof node !== 'object') return;
+    const price = pick(node, ['price_per_night', 'ratePerNight', 'nightly_rate', 'price', 'min_price', 'total_price']);
+    const n = typeof price === 'string' ? parseFloat(price) : price;
+    if (Number.isFinite(n) && n > 0) {
+      const star = pick(node, ['star_rating', 'starRating', 'hotel_class', 'rating']);
+      seen.push({
+        nightlyUSD: Math.round(n),
+        star: Number.isFinite(+star) ? +star : null,
+        neighborhood: pick(node, ['neighborhood_name', 'neighborhood', 'area_name', 'zone_name', 'city_name']) ?? null,
+        guestRating: pick(node, ['guest_rating', 'guestRating', 'review_rating']) ?? null,
+        amenities: Array.isArray(node.amenities) ? node.amenities.slice(0, 4) : undefined,
+      });
+    }
+    for (const v of Object.values(node)) visit(v, depth + 1);
+  };
+  visit(data);
+  // Cheapest per star tier - that's how Express Deals are actually chosen.
+  const byStar = {};
+  for (const h of seen) {
+    const key = h.star ?? 0;
+    if (!byStar[key] || h.nightlyUSD < byStar[key].nightlyUSD) byStar[key] = h;
+  }
+  return Object.values(byStar).sort((a, b) => (a.star ?? 0) - (b.star ?? 0));
+}
+
+async function fetchExpressDeals(checkIn, checkOut) {
+  const cfg = sources.priceline ?? {};
+  const geo = cfg.cities?.sf ?? { latitude: 37.7749, longitude: -122.4194, radius: 10 };
+  const host = cfg.host ?? 'priceline-com-provider.p.rapidapi.com';
+  const url = `https://${host}${cfg.expressPath ?? '/v2/hotels/expressResults'}`
+    + `?check_in=${checkIn}&check_out=${checkOut}&latitude=${geo.latitude}&longitude=${geo.longitude}`
+    + `&radius=${geo.radius ?? 10}&adults=2&rooms_number=1&sort_by=price&output_version=3`
+    + `&currency=USD&country_code=US&language=en&sid=${cfg.sid ?? 'iSiX639'}`;
+  const res = await fetchJSON(url, {
+    headers: { 'X-RapidAPI-Key': process.env.RAPIDAPI_KEY, 'X-RapidAPI-Host': host },
+    timeoutMs: 30000,
+  });
+  if (!res.ok) throw new Error(`Priceline Express HTTP ${res.status}`);
+  return parseExpressResults(res.data);
+}
+
 // ---- SerpAPI google_hotels sync ----
 
 async function googleHotels(query, checkIn, checkOut) {
@@ -132,7 +202,15 @@ export async function sync({ date } = {}) {
   try {
     const properties = {};
     const errors = [];
+    let express = null;
     let calls = 0;
+    if (process.env.RAPIDAPI_KEY) {
+      try {
+        express = await fetchExpressDeals(checkIn, checkOut);
+      } catch (err) {
+        errors.push(`express: ${err.message}`);
+      }
+    }
     for (const [cityKey, qs] of Object.entries(queries)) {
       const merged = [];
       for (const q of qs) {
@@ -146,12 +224,15 @@ export async function sync({ date } = {}) {
       properties[cityKey] = merged;
     }
     const total = Object.values(properties).reduce((n, a) => n + a.length, 0);
+    const expressCount = express?.length ?? 0;
     return writeSection('hotels', {
-      status: total ? 'live' : (errors.length ? 'error' : 'seed'),
-      data: { checkIn, checkOut, properties, errors },
-      notes: total
-        ? `SerpAPI google_hotels: ${total} live property rates for ${checkIn} (${calls} searches). Public rates - book via the member/express link for the real member price.`
-        : `google_hotels returned no rates${errors.length ? ` (${errors.slice(0, 2).join('; ')})` : ''}. Using seed ranges.`,
+      status: total || expressCount ? 'live' : (errors.length ? 'error' : 'seed'),
+      data: { checkIn, checkOut, properties, express, errors },
+      notes: [
+        total ? `google_hotels: ${total} live public rates for ${checkIn} (${calls} searches)` : 'no live public rates',
+        expressCount ? `Priceline Express: ${expressCount} live opaque tiers` : (process.env.RAPIDAPI_KEY ? 'Express returned nothing' : 'no RAPIDAPI_KEY - Express shows estimates'),
+        'MGM/Caesars member prices still require booking via their links while signed in.',
+      ].join(' · '),
     });
   } catch (err) {
     return writeSection('hotels', {

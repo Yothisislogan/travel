@@ -5,7 +5,7 @@
 import { loadJSON, readSnapshot, haversineMiles, estimateFlightHours, costMidpoint, addCosts } from './util.js';
 import { routeMap, gowildRules, searchLink, frequencyOf } from './providers/frontier.js';
 import { deepLinks } from './providers/flights.js';
-import { busLink } from './providers/bus.js';
+import { busLink, liveFare } from './providers/bus.js';
 import { amtrakLink } from './providers/amtrak.js';
 
 const airports = loadJSON('src/data/airports.json');
@@ -136,8 +136,22 @@ export function buildEdges({ date, allowModes }) {
     }
   }
   if (allow.has('bus')) {
+    const busSnap = snap.sections.bus;
+    const busLive = busSnap?.status === 'live' && busSnap.data?.searchDate === date ? busSnap.data.fares ?? {} : {};
     for (const b of ground.busLegs) {
-      edges.push({ mode: 'bus', from: b.from, to: b.to, operator: b.operator, hours: b.hours, costUSD: b.costUSD, dataStatus: 'estimate', bookLink: busLink(b.from, b.to, date), notes: b.notes, daysPerWeek: b.daysPerWeek });
+      const live = busLive[b.id];
+      edges.push({
+        mode: 'bus',
+        from: b.from,
+        to: b.to,
+        operator: live ? `${b.operator} (live)` : b.operator,
+        hours: live?.hours ?? b.hours,
+        costUSD: live ? { min: live.priceUSD, max: live.priceUSD } : b.costUSD,
+        dataStatus: live ? 'live' : 'estimate',
+        bookLink: busLink(b.from, b.to, date),
+        notes: b.notes,
+        daysPerWeek: b.daysPerWeek,
+      });
     }
   }
 

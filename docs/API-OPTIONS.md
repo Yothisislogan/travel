@@ -44,7 +44,20 @@ Notes: the `dd1` date is `'Aug 18, 2026'`-style, not ISO. Availability data is v
 | **AviationStack etc.** | Schedules/status (what the "Frontier Flight Radar"-style apps use) | No fares at all |
 | **Frontier's official NDC API** (developer.flyfrontier.com) | Real API access | Accredited travel-trade partners only; revenue fares - not a hobbyist option |
 | **Seats.aero** (Pro, ~$10/mo) | Award availability API across ~20 programs; best US-domestic fit | Miles backups only - no Frontier/GoWild |
+| **FlixBus/Greyhound search API** (no key) | Live intercity bus fares — Greyhound runs on FlixBus's platform, so one free API covers both; wired into the bus legs | Unofficial front-end API; city UUIDs resolved via their autocomplete |
+| **RapidAPI `priceline-com-provider`** (`RAPIDAPI_KEY`) | **Real Priceline Express Deals** — it's a passthrough to Priceline Partner Network's official `getExpress.Results`, so opaque rates are genuine | **Read-only**: no `Express.Book` endpoint, so you still book on priceline.com. Reseller-owned PPN credentials, high latency (~1.7–2.6s), listing last updated Jan 2024 |
 | **Apify flight-award-scraper** (`APIFY_TOKEN`, usage-priced) | REST actor returning award miles/taxes/seats as JSON; wired into the app's awards provider as an optional/second source | Departures within ~60 days only; per-run cost; verify program coverage |
 | **Award Travel Finder** ([MCP server](https://awardtravelfinder.com/mcp)) | Conversational award search in Claude/Cursor across 19 airlines / 14 programs; strong for international/premium | An MCP server for AI agents, not a REST API — best used from Claude directly, not baked into this app; US-domestic coverage is thinner |
 
 The agent already integrates SerpAPI, Amadeus, Seats.aero, and Amtraker via `.env` keys (see README), and now the InternalSelect checker for GoWild itself.
+
+
+## Amtrak fares: why they stay estimates
+
+Amtrak publishes a GTFS schedule feed with **no fare data at all** (no `fare_attributes`, no GTFS-Fares v2), and routes all pricing through accredited intermediaries behind an accreditation process. Amtraker is status-only. Rome2Rio returns *modeled* estimates, not live fares.
+
+The only endpoint that returns a real WAS→RVR price is Amtrak's own booking backend, which sits behind Akamai Bot Manager and requires replaying a browser session's cookies — and Amtrak's Terms of Use explicitly prohibit automated retrieval. **This app deliberately does not do that.** Train legs show researched fare ranges plus a prefilled booking link, and that's the honest ceiling for rail.
+
+## SerpAPI quota note
+
+`departure_id`/`arrival_id` accept comma-separated airport codes and the whole multi-airport query bills as **one** search. The flights sync uses this: all 11 markets are priced in a single search instead of 11, so a free-tier month affords roughly 11x more syncs. Each returned itinerary names its own airports, so results still map back to individual markets.
