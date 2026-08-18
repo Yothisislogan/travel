@@ -76,8 +76,9 @@
 
 <script>
 // ---- where this repo lives (edit if you fork or rename the branch) ----
-const OWNER = 'Yothisislogan', REPO = 'travel', BRANCH = 'main', WORKFLOW = 'sync.yml';
-const RAW = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/site/data.json`;
+// data.json is built fresh at deploy time by the "pages" workflow and served
+// same-origin, so Sync = rebuild + redeploy that workflow.
+const OWNER = 'Yothisislogan', REPO = 'travel', BRANCH = 'main', WORKFLOW = 'pages.yml';
 const ACTIONS_URL = `https://github.com/${OWNER}/${REPO}/actions/workflows/${WORKFLOW}`;
 
 const $ = (id) => document.getElementById(id);
@@ -118,9 +119,11 @@ try { applyTheme(localStorage.getItem('gw_theme') || 'auto'); } catch (e) { appl
 let DATA = null;
 
 async function loadData() {
-  for (const url of [RAW + '?t=' + Date.now(), './data.json']) {
-    try { const r = await fetch(url, { cache: 'no-store' }); if (r.ok) return await r.json(); } catch (e) { /* try next */ }
-  }
+  // Same-origin file built at deploy time; cache-busted so a fresh deploy shows.
+  try {
+    const r = await fetch('./data.json?t=' + Date.now(), { cache: 'no-store' });
+    if (r.ok) return await r.json();
+  } catch (e) { /* falls through to null */ }
   return null;
 }
 

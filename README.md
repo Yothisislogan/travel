@@ -79,13 +79,13 @@ The planner builds a multimodal graph - GoWild nonstops (both directions of the 
 
 ## Phone kit: serverless dashboard on GitHub Pages
 
-For mid-trip use with no computer and no server, the repo also ships a **static dashboard** (`site/index.html`) plus two GitHub Actions:
+For mid-trip use with no computer and no server, the repo also ships a **static dashboard** (`site/index.html`) served by one GitHub Action:
 
-1. **Enable Pages once**: repo Settings → Pages → Source: **GitHub Actions**. The `pages` workflow deploys `site/` and gives you a URL that works on your phone.
-2. **Sync on request**: the `sync` workflow runs the real providers on GitHub's machines (put SERPAPI_KEY etc. in repo → Settings → Secrets → Actions) and commits a fresh `site/data.json`. Trigger it from the Actions tab, or straight from the dashboard's **Sync** button (paste a fine-grained token with Actions write access once; it stays in your browser's localStorage).
-3. **Live GoWild seats in the browser**: web pages can't fetch Frontier cross-origin (and GitHub's IPs get bot-blocked), so the dashboard includes a **bookmarklet** - tap it while on any prefilled Frontier search page and it overlays each flight's GoWild fare and seats remaining, read from the page you're already on, logged in, from your own IP.
+1. **Enable Pages once**: repo Settings → Pages → Source: **GitHub Actions**. The `pages` workflow **builds `site/data.json` fresh, then deploys `site/`**, giving you a URL that works on your phone.
+2. **Sync on request** = rebuild + redeploy. The dashboard's **Sync** button (or Actions → *pages* → *Run workflow*) triggers `pages` as a `workflow_dispatch`, which runs a full live provider sync using your repo **Secrets** (put SERPAPI_KEY etc. in Settings → Secrets → Actions), regenerates `data.json`, and redeploys. Ordinary code pushes rebuild with **seed data only** (no paid API calls), so routine pushes never burn your SerpAPI quota. `data.json` is **generated at deploy time, never committed** — that's deliberate: a committed 600 KB single-line file was getting corrupted by branch merges.
+3. **Live GoWild seats in the browser**: web pages can't fetch Frontier cross-origin (and GitHub's IPs get bot-blocked), so the dashboard includes a **bookmarklet** - tap it while on any prefilled Frontier search page and it overlays each flight's GoWild fare and seats remaining, read from the page you're already on, logged in, from your own IP. (On a computer, the local dashboard's **↻ live seats** button does this natively.)
 
-The static page renders precomputed views (outbound/hop for today+tomorrow, return plans from SFO/LAS both sorts, backup plans) and fetches the freshest `data.json` from `raw.githubusercontent.com`, so a sync updates the page without a redeploy. Amtrak live status also refreshes directly in the browser (Amtraker's API allows it). If the dashboard moves to a different branch or fork, update the constants at the top of `site/index.html`.
+The static page renders precomputed views (outbound/hop over a rolling 10-day window, return plans from SFO/LAS both sorts, backup plans, hotels) and reads its same-origin `data.json`. Amtrak live status refreshes directly in the browser (Amtraker's API allows it). If the dashboard moves to a different fork, update the `OWNER`/`REPO`/`BRANCH` constants at the top of `site/index.html`.
 
 ## Tests
 

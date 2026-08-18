@@ -1,15 +1,20 @@
 name: pages
 
-# Deploys site/ to GitHub Pages. Enable once in repo Settings -> Pages ->
-# Source: "GitHub Actions". Data commits from the sync workflow carry
-# [skip ci] and do NOT redeploy - the page reads fresh data.json straight
-# from raw.githubusercontent.com, so redeploys only happen when the app
-# itself changes.
+# Builds site/data.json fresh, then deploys site/ to GitHub Pages.
+# Enable once in repo Settings -> Pages -> Source: "GitHub Actions".
+#
+# data.json is generated here at deploy time (NOT committed to git) so it can
+# never be corrupted by a branch merge. On a normal push the build uses seed
+# data only (no paid API calls); on a manual "Run workflow" / the dashboard
+# Sync button (workflow_dispatch), it runs a full live sync with your secrets.
 on:
   workflow_dispatch:
   push:
     paths:
       - 'site/**'
+      - 'src/**'
+      - 'scripts/**'
+      - 'trip.config.json'
 
 permissions:
   contents: read
@@ -28,6 +33,21 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build data (live only on manual Sync, seed on code pushes)
+        run: |
+          node src/cli.js sync || echo "sync had issues; export will fall back to seed"
+          node scripts/export-pages-data.js
+        env:
+          # Paid API keys are passed ONLY on workflow_dispatch (the Sync button /
+          # Run workflow), so routine code pushes don't burn quota.
+          SERPAPI_KEY: ${{ github.event_name == 'workflow_dispatch' && secrets.SERPAPI_KEY || '' }}
+          AMADEUS_CLIENT_ID: ${{ github.event_name == 'workflow_dispatch' && secrets.AMADEUS_CLIENT_ID || '' }}
+          AMADEUS_CLIENT_SECRET: ${{ github.event_name == 'workflow_dispatch' && secrets.AMADEUS_CLIENT_SECRET || '' }}
+          SEATS_AERO_API_KEY: ${{ github.event_name == 'workflow_dispatch' && secrets.SEATS_AERO_API_KEY || '' }}
+          APIFY_TOKEN: ${{ github.event_name == 'workflow_dispatch' && secrets.APIFY_TOKEN || '' }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -2,3 +2,6 @@ node_modules/
 cache/
 .env
 *.log
+
+# generated at deploy time by scripts/export-pages-data.js
+site/data.json
