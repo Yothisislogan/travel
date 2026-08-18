@@ -43,6 +43,8 @@ Notes: the `dd1` date is `'Aug 18, 2026'`-style, not ISO. Availability data is v
 | **Paid scraper APIs** (Crawlbyte FlyFrontier, Apify actors, Bright Data) | Managed Frontier scraping incl. fare data | $; same ToS gray zone, outsourced |
 | **AviationStack etc.** | Schedules/status (what the "Frontier Flight Radar"-style apps use) | No fares at all |
 | **Frontier's official NDC API** (developer.flyfrontier.com) | Real API access | Accredited travel-trade partners only; revenue fares - not a hobbyist option |
-| **Seats.aero** (Pro, ~$10/mo) | Award availability API across ~20 programs | Miles backups only - no Frontier/GoWild |
+| **Seats.aero** (Pro, ~$10/mo) | Award availability API across ~20 programs; best US-domestic fit | Miles backups only - no Frontier/GoWild |
+| **Apify flight-award-scraper** (`APIFY_TOKEN`, usage-priced) | REST actor returning award miles/taxes/seats as JSON; wired into the app's awards provider as an optional/second source | Departures within ~60 days only; per-run cost; verify program coverage |
+| **Award Travel Finder** ([MCP server](https://awardtravelfinder.com/mcp)) | Conversational award search in Claude/Cursor across 19 airlines / 14 programs; strong for international/premium | An MCP server for AI agents, not a REST API — best used from Claude directly, not baked into this app; US-domestic coverage is thinner |
 
 The agent already integrates SerpAPI, Amadeus, Seats.aero, and Amtraker via `.env` keys (see README), and now the InternalSelect checker for GoWild itself.

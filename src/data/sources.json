@@ -33,6 +33,23 @@
     "trains": "https://api-v3.amtraker.com/v3/trains",
     "notes": "Free, no key. Live positions/status of all Amtrak trains (no fares)."
   },
+  "apify": {
+    "_comment": "Optional live award source via the Apify flight-award-scraper actor. Set APIFY_TOKEN in .env to enable. The actor runs per origin/destination pair (bounded by maxRuns) and returns award rows as JSON. VERIFY inputTemplate field names against the actor's input schema at https://apify.com/igolaizola/flight-award-scraper - edit here if they differ; the output parser already tolerates common field-name variants. Note: the actor only supports departures within ~60 days, and each run consumes Apify usage credits.",
+    "actor": "igolaizola~flight-award-scraper",
+    "endpoint": "https://api.apify.com/v2/acts/{actor}/run-sync-get-dataset-items",
+    "inputTemplate": {
+      "origin": "{origin}",
+      "destination": "{destination}",
+      "startDate": "{startDate}",
+      "endDate": "{endDate}",
+      "cabin": "economy"
+    },
+    "origins": ["LAS", "SFO"],
+    "destinations": ["RIC", "ORF", "IAD", "DCA"],
+    "maxDestinations": 4,
+    "maxRuns": 8,
+    "dateWindowDays": 2
+  },
   "flixbus": {
     "attempts": [],
     "deepLink": "https://shop.flixbus.com/search?departureCity={fromCity}&arrivalCity={toCity}&rideDate={date}"

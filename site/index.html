@@ -40,13 +40,18 @@
     <div class="controls">
       from <select id="retFrom"><option>SFO</option><option>LAS</option></select>
       sort <select id="retSort"><option value="time">speed, then cost</option><option value="cost">cost, then speed</option></select>
+      date <select id="retDate"></select>
       <span class="dim" id="retNote"></span>
     </div>
     <div id="returnBody" class="empty">loading&hellip;</div>
   </section>
 
   <section class="wide" id="secBackup">
-    <h2>Backup · stuck out west <select id="buFrom"><option>LAS</option><option>SFO</option></select></h2>
+    <h2>Backup · stuck out west</h2>
+    <div class="controls">
+      stranded at <select id="buFrom"><option>LAS</option><option>SFO</option></select>
+      date <select id="buDate"></select>
+    </div>
     <div id="backupBody" class="empty">loading&hellip;</div>
   </section>
 
@@ -54,9 +59,10 @@
 
   <section id="secBookmarklet">
     <h2>GoWild seat-check bookmarklet</h2>
-    <p class="dim">Live GoWild seat counts can't be fetched by a web page (browser cross-origin rules), but a bookmarklet runs <i>on Frontier's own page</i> where the data lives. Drag this to your bookmarks bar (on mobile: copy the link, save any bookmark, then edit its URL):</p>
-    <p><a class="bookmarklet" id="bmLink" href="#" onclick="return false">🎯 GoWild seats</a></p>
-    <p class="dim">Then open any prefilled &ldquo;check fares&rdquo; link above and tap the bookmark — it overlays every flight's GoWild fare and seats remaining.</p>
+    <p class="dim">Live GoWild seat counts can't be fetched by a web page (browser cross-origin rules), but a bookmarklet runs <i>on Frontier's own page</i> where the data lives.</p>
+    <p><b>Desktop:</b> drag this to your bookmarks bar. <b>Mobile / can't drag:</b> tap <b>Copy code</b> and paste it as the URL of a new bookmark.</p>
+    <p><a class="bookmarklet" id="bmLink" href="#" draggable="true">🎯 GoWild seats</a> <button id="bmCopy" class="ghost">Copy code</button></p>
+    <p class="dim">Then open any prefilled &ldquo;check fares&rdquo; link above and, on Frontier's results page, tap the bookmark — it overlays every flight's GoWild fare and seats remaining.</p>
   </section>
 </main>
 
@@ -74,6 +80,9 @@ const money = (c) => c == null ? '?' : typeof c === 'number' ? '$' + Math.round(
 const hrs = (h) => { if (h == null) return '?'; const m = Math.round(h * 60); return Math.floor(m / 60) + 'h' + (m % 60 ? String(m % 60).padStart(2, '0') + 'm' : ''); };
 const tag = (m) => '<span class="tag ' + esc(m) + '">' + esc(m) + '</span>';
 const route = (from, via, to) => '<span class="route">' + esc(from) + (via ? ' <span class="hop">→</span> ' + esc(via) : '') + ' <span class="hop">→</span> ' + esc(to) + '</span>';
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function dateLabel(iso) { const [y, m, d] = iso.split('-').map(Number); const wd = new Date(Date.UTC(y, m - 1, d)).getUTCDay(); return WD[wd] + ' ' + MO[m - 1] + ' ' + d; }
+const gflink = (from, to, date) => 'https://www.google.com/travel/flights?q=' + encodeURIComponent('Flights from ' + from + ' to ' + to + ' on ' + date + ' one way');
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(() => t.style.display = 'none', 5000); }
 
 // ---- error boundary: a data glitch shows a bar, never a blank page or a redirect ----
@@ -158,14 +167,20 @@ function render() {
     }
     $('statusBody').innerHTML = sh || '<div class="empty">no status</div>';
 
-    for (const [sel, key] of [['obDate', 'outbound'], ['hopDate', 'hop']]) {
-      const el = $(sel), dates = Object.keys(DATA[key] ?? {});
-      if (el.options.length !== dates.length) el.innerHTML = dates.map((d) => '<option>' + esc(d) + '</option>').join('');
+    // Populate every date picker from the rolling window, once, defaulting to
+    // the first bookable day (tomorrow).
+    const dates = DATA.dates || Object.keys(DATA.outbound || {});
+    for (const id of ['obDate', 'hopDate', 'retDate', 'buDate']) {
+      const el = $(id);
+      if (el && el.options.length !== dates.length) {
+        el.innerHTML = dates.map((d) => '<option value="' + esc(d) + '">' + esc(dateLabel(d)) + '</option>').join('');
+        el.value = DATA.defaultDate && dates.includes(DATA.defaultDate) ? DATA.defaultDate : dates[0];
+      }
     }
     $('outboundBody').innerHTML = gowildHTML(DATA.outbound?.[$('obDate').value]);
     $('hopBody').innerHTML = gowildHTML(DATA.hop?.[$('hopDate').value]);
 
-    const plan = DATA.returns?.[$('retFrom').value + ':' + $('retSort').value];
+    const plan = DATA.returns?.[$('retFrom').value + ':' + $('retSort').value + ':' + $('retDate').value];
     $('retNote').textContent = plan?.note ?? '';
     let rh = '';
     (plan?.itineraries ?? []).forEach((it, i) => {
@@ -180,14 +195,15 @@ function render() {
     });
     $('returnBody').innerHTML = rh || '<div class="empty">No plans yet — run Sync.</div>';
 
+    const buDate = $('buDate').value;
     const bu = DATA.backup?.[$('buFrom').value];
     let bh = '';
     if (bu) {
-      bh = '<div class="dim" style="margin-bottom:4px"><b>Cash</b> — cheapest markets first</div>';
+      bh = '<div class="dim" style="margin-bottom:4px"><b>Cash</b> — cheapest markets first · for <b>' + esc(dateLabel(buDate)) + '</b></div>';
       for (const o of bu.cash.options) {
         bh += '<div class="row">' + tag('flight') + route(o.from, null, o.to) + ' <b class="num">' + money(o.costUSD) + '</b> <span class="dim">· ~' + hrs(o.hours)
           + ' · ' + (o.nonstop ? 'nonstop' : '1-stop') + '</span>' + (o.dataStatus === 'live' ? ' <span class="tag live">live</span>' : '')
-          + '<div class="dim">' + esc(o.airlines.join(', ')) + ' · <a target="_blank" rel="noopener" href="' + esc(o.links.googleFlights) + '">Google Flights ↗</a></div></div>';
+          + '<div class="dim">' + esc(o.airlines.join(', ')) + ' · <a target="_blank" rel="noopener" href="' + esc(gflink(o.from, o.to, buDate)) + '">Google Flights ↗</a></div></div>';
       }
       bh += '<div class="dim" style="margin:10px 0 4px"><b>Miles</b> — fewest first</div>';
       for (const o of bu.awards.options.slice(0, 8)) {
@@ -300,9 +316,22 @@ function gowildBookmarklet() {
   if (fl.length) { show(fl); }
   else { fetch(location.href, { credentials: 'include' }).then(function (r) { return r.text(); }).then(function (t) { show(parse(t)); }).catch(function () { show([]); }); }
 }
-$('bmLink').href = 'javascript:(' + encodeURIComponent(gowildBookmarklet.toString()) + ')()';
+const BOOKMARKLET_CODE = 'javascript:(' + encodeURIComponent(gowildBookmarklet.toString()) + ')()';
+$('bmLink').href = BOOKMARKLET_CODE;
+// Clicking it here (rather than on Frontier) can't work — explain instead of doing nothing.
+$('bmLink').addEventListener('click', (e) => {
+  e.preventDefault();
+  toast('This is a bookmarklet — drag it to your bookmarks bar, or tap "Copy code" and paste it as a new bookmark. Then run it on Frontier\'s flight-results page.');
+});
+$('bmCopy').addEventListener('click', async () => {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(BOOKMARKLET_CODE);
+    else { const t = document.createElement('textarea'); t.value = BOOKMARKLET_CODE; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    toast('Bookmarklet copied — create a new bookmark and paste this as its URL/address.');
+  } catch (e) { toast('Copy failed — long-press the green button and choose Copy Link instead.'); }
+});
 
-for (const id of ['obDate', 'hopDate', 'retFrom', 'retSort', 'buFrom']) $(id).addEventListener('change', render);
+for (const id of ['obDate', 'hopDate', 'retFrom', 'retSort', 'retDate', 'buFrom', 'buDate']) $(id).addEventListener('change', render);
 
 loadData().then((d) => { DATA = d; render(); }).catch((err) => showError('loading data', err));
 </script>

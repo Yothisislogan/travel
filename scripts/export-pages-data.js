@@ -16,9 +16,15 @@ const today = todayISO();
 const tomorrow = addDaysISO(today, 1);
 const home = config.traveler.homeAirports;
 
+// Offer a rolling window of dates so you can check any near day's booking
+// window and day-of-week service, not just today/tomorrow.
+const DAYS = 10;
+const dates = Array.from({ length: DAYS }, (_, i) => addDaysISO(today, i));
+
 const data = {
   generatedAt: new Date().toISOString(),
-  dates: { today, tomorrow },
+  dates,
+  defaultDate: tomorrow,
   trip: `${home.preferred}/${home.backup} -> LAS -> SFO -> back east`,
   sections: syncStatus(),
   rules: {
@@ -26,13 +32,17 @@ const data = {
     blackoutDates: gowildRules().blackoutDates,
     fareFeesUSD: gowildRules().fareFeesUSD,
   },
-  outbound: Object.fromEntries([today, tomorrow].map((d) => [d, gowildOptions([home.preferred, home.backup], ['LAS'], d)])),
-  hop: Object.fromEntries([today, tomorrow].map((d) => [d, gowildOptions(['LAS'], ['SFO', 'OAK', 'SJC'], d)])),
+  outbound: Object.fromEntries(dates.map((d) => [d, gowildOptions([home.preferred, home.backup], ['LAS'], d)])),
+  hop: Object.fromEntries(dates.map((d) => [d, gowildOptions(['LAS'], ['SFO', 'OAK', 'SJC'], d)])),
   returns: Object.fromEntries(
-    ['SFO', 'LAS'].flatMap((from) =>
-      ['time', 'cost'].map((sort) => [`${from}:${sort}`, planReturn({ from, date: tomorrow, sort })]),
+    dates.flatMap((d) =>
+      ['SFO', 'LAS'].flatMap((from) =>
+        ['time', 'cost'].map((sort) => [`${from}:${sort}:${d}`, planReturn({ from, date: d, sort })]),
+      ),
     ),
   ),
+  // Backup award/cash data is date-independent (only deep-link dates differ),
+  // so key by origin only; the page rebuilds the dated Google Flights link.
   backup: Object.fromEntries(
     ['LAS', 'SFO'].map((from) => [from, { cash: backupCashOptions(from, tomorrow), awards: awardOptions(from) }]),
   ),
