@@ -22,12 +22,29 @@ const home = config.traveler.homeAirports;
 const DAYS = 10;
 const dates = Array.from({ length: DAYS }, (_, i) => addDaysISO(today, i));
 
+// On a seed build no sync ran, so raw statuses would read "never synced" and the
+// providers' "no API key configured" notes would wrongly imply keys are missing.
+// Say plainly what happened instead.
+function sectionStatus() {
+  const s = syncStatus();
+  if (process.env.BUILD_MODE !== 'seed') return s;
+  return Object.fromEntries(
+    Object.entries(s).map(([k, v]) => [
+      k,
+      { ...v, status: 'seed', notes: 'Seed build from a code push - no API calls made. Press Sync for live data.' },
+    ]),
+  );
+}
+
 const data = {
   generatedAt: new Date().toISOString(),
+  // "live" = built by a manual Sync with API keys; "seed" = a code-push rebuild
+  // with no API calls. Surfaced so the page never implies keys are missing.
+  buildMode: process.env.BUILD_MODE ?? 'local',
   dates,
   defaultDate: tomorrow,
   trip: `${home.preferred}/${home.backup} -> LAS -> SFO -> back east`,
-  sections: syncStatus(),
+  sections: sectionStatus(),
   rules: {
     bookingWindow: gowildRules().bookingWindow,
     blackoutDates: gowildRules().blackoutDates,

@@ -36,18 +36,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Build data (live only on manual Sync, seed on code pushes)
+      # LIVE build: only on manual Sync / Run workflow, so routine code pushes
+      # never burn paid API quota. Secrets are passed here and nowhere else.
+      - name: Build data (live sync)
+        if: github.event_name == 'workflow_dispatch'
         run: |
-          node src/cli.js sync || echo "sync had issues; export will fall back to seed"
+          node src/cli.js sync || echo "sync had issues; export falls back to seed for those sections"
           node scripts/export-pages-data.js
         env:
-          # Paid API keys are passed ONLY on workflow_dispatch (the Sync button /
-          # Run workflow), so routine code pushes don't burn quota.
-          SERPAPI_KEY: ${{ github.event_name == 'workflow_dispatch' && secrets.SERPAPI_KEY || '' }}
-          AMADEUS_CLIENT_ID: ${{ github.event_name == 'workflow_dispatch' && secrets.AMADEUS_CLIENT_ID || '' }}
-          AMADEUS_CLIENT_SECRET: ${{ github.event_name == 'workflow_dispatch' && secrets.AMADEUS_CLIENT_SECRET || '' }}
-          SEATS_AERO_API_KEY: ${{ github.event_name == 'workflow_dispatch' && secrets.SEATS_AERO_API_KEY || '' }}
-          APIFY_TOKEN: ${{ github.event_name == 'workflow_dispatch' && secrets.APIFY_TOKEN || '' }}
+          BUILD_MODE: live
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          AMADEUS_CLIENT_ID: ${{ secrets.AMADEUS_CLIENT_ID }}
+          AMADEUS_CLIENT_SECRET: ${{ secrets.AMADEUS_CLIENT_SECRET }}
+          SEATS_AERO_API_KEY: ${{ secrets.SEATS_AERO_API_KEY }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+
+      # SEED build: code pushes just rebuild the page from seed data - no API
+      # calls, no quota. The page says so and points at the Sync button.
+      - name: Build data (seed only)
+        if: github.event_name != 'workflow_dispatch'
+        run: node scripts/export-pages-data.js
+        env:
+          BUILD_MODE: seed
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

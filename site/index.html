@@ -170,6 +170,10 @@ function render() {
     $('freshline').textContent = DATA.generatedAt ? 'data ' + ago(DATA.generatedAt) : '';
 
     let sh = '';
+    if (DATA.buildMode === 'seed') {
+      sh += '<div class="panel" style="margin-bottom:8px">This page was rebuilt from a code push, so prices are <b>seed estimates</b> — no API calls were made (that keeps your SerpAPI quota intact). '
+        + 'Press <b>Sync</b> above for a live build using your saved repo secrets.</div>';
+    }
     for (const [, s] of Object.entries(DATA.sections ?? {})) {
       const cls = s.status === 'live' ? 'ok' : s.status === 'error' ? 'bad' : s.status === 'never' ? 'warn' : 'dim';
       sh += '<div style="margin:5px 0"><b>' + esc(s.label) + '</b> <span class="tag ' + (cls === 'ok' ? 'live' : cls === 'bad' ? 'bad' : cls === 'warn' ? 'warn' : '') + '">' + esc(s.status) + '</span> <span class="dim">' + esc(s.notes) + '</span></div>';
