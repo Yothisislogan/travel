@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // GoWild Trip Agent CLI.
 //   status | sync | outbound | hop | return | backup | dashboard
-import { loadJSON, fmtHours, fmtMoney, todayISO, addDaysISO, loadEnv } from './util.js';
-import { gowildOptions, bookingWindow, isBlackout, gowildRules } from './providers/frontier.js';
+import { loadJSON, fmtHours, fmtMoney, todayISO, addDaysISO, loadEnv, liveAgeClass, shortAge } from './util.js';
+import { gowildOptions, bookingWindow, isBlackout, gowildRules, dayOfWeek } from './providers/frontier.js';
 import { backupCashOptions } from './providers/flights.js';
 import { awardOptions } from './providers/awards.js';
 import { liveStatus } from './providers/amtrak.js';
@@ -32,10 +32,46 @@ function defaultDate() {
   return flags.date ?? addDaysISO(todayISO(), 1);
 }
 
+// GoWild inventory turns over in minutes, so an unqualified "LIVE" on a capture
+// from hours ago is the most expensive kind of wrong. Every live line carries
+// its age, and anything past an hour says so loudly.
+function liveTag(capturedAt) {
+  const cls = liveAgeClass(capturedAt);
+  if (!cls) return 'LIVE';
+  const age = shortAge(capturedAt);
+  return cls === 'fresh' ? `LIVE (${age})` : `LIVE ${age} AGO - RECHECK`;
+}
+
+function printLiveSegments(live, capturedAt) {
+  const tag = liveTag(capturedAt);
+  for (const s of live.segments) {
+    const pair = `${s.from}-${s.to}`;
+    if (!s.checked) {
+      console.log(`    ${pair}: not searched - this connection is unconfirmed`);
+      continue;
+    }
+    if (!s.gowildFlights) {
+      console.log(`    ${tag}: no GoWild seats showing on ${pair} right now`);
+      continue;
+    }
+    for (const f of s.flights) {
+      const seats = f.goWildSeatsRemaining != null ? `${f.goWildSeatsRemaining} GoWild seat(s) left` : 'GoWild available';
+      console.log(`    ${tag}: ${pair} ${f.flightNumber ? `#${f.flightNumber} ` : ''}${f.departure ?? ''}${f.stops ? ` (${f.stops})` : ''} - $${f.goWildFare ?? '?'} - ${seats}`);
+    }
+  }
+  if (!live.complete) {
+    console.log(dim(`    (${live.checkedSegments}/${live.totalSegments} segments searched - the whole path is not confirmed bookable)`));
+  }
+}
+
 function printGowildBlock(title, opts) {
   console.log(B(`\n${title}  (${opts.date})`));
   console.log(`  ${opts.window.note}`);
-  if (opts.blackout) console.log(`  !! ${opts.blackout.label}: ${opts.date} may be a GoWild blackout date.`);
+  if (opts.blackout) {
+    const pk = gowildRules().peakDayChargeUSD;
+    console.log(`  !! ${opts.blackout.label}: ${opts.date} is a GoWild blackout date - flyable only with the Peak Day Charge`
+      + (pk ? ` (+$${pk.min}-$${pk.max} per segment).` : '.'));
+  }
   if (!opts.paths.length) {
     console.log('  No Frontier paths in the current route map. Run `sync` and check the route data.');
     return;
@@ -45,15 +81,7 @@ function printGowildBlock(title, opts) {
     const freq = p.daysPerWeek && p.daysPerWeek < 7 ? `  [${p.frequencyNote}]` : '';
     const dayFlag = p.operatesOnDate === false ? `  !! does NOT run on ${p.dayOfWeek}` : '';
     console.log(`  ${routeStr.padEnd(28)} ~${fmtHours(p.totalHours).padEnd(7)} est ${fmtMoney(p.estCostUSD)} in taxes/fees${freq}${dayFlag}`);
-    if (p.live) {
-      if (!p.live.gowildFlights) {
-        console.log(`    LIVE: no GoWild seats showing on ${p.from}-${p.to} right now`);
-      }
-      for (const f of p.live.flights) {
-        const seats = f.goWildSeatsRemaining != null ? `${f.goWildSeatsRemaining} GoWild seat(s) left` : 'GoWild available';
-        console.log(`    LIVE: ${f.flightNumber ? `#${f.flightNumber} ` : ''}${f.departure ?? ''}${f.stops ? ` (${f.stops})` : ''} - $${f.goWildFare ?? '?'} - ${seats}`);
-      }
-    }
+    if (p.live) printLiveSegments(p.live, opts.capturedAt);
     console.log(dim(`    check: ${p.searchLink}`));
   }
   if (opts.trackers?.length) {
@@ -128,9 +156,13 @@ async function main() {
       plan.itineraries.forEach((it, i) => {
         const badge = it.badges.length ? ` [${it.badges.join(', ')}]` : '';
         const miles = it.totalMiles ? ` + ${it.totalMiles.toLocaleString()} miles` : '';
-        console.log(B(`  ${i + 1}. ${fmtHours(it.totalHours)}  ${fmtMoney(it.totalCostUSD)}${miles}  -> ${it.arrival}${badge}`));
+        const arrive = it.arrivalDate ? ` arrive ${it.arrivalDate}${it.daysSpanned ? ` (+${it.daysSpanned}d)` : ''}` : '';
+        const grounded = it.flyable === false ? `  !! does not run on ${dayOfWeek(d)}: ${it.groundedLegs.join(', ')}` : '';
+        console.log(B(`  ${i + 1}. ${fmtHours(it.totalHours)}  ${fmtMoney(it.totalCostUSD)}${miles}  -> ${it.arrival}${arrive}${badge}${grounded}`));
         for (const leg of it.legs) {
-          console.log(`     [${(MODE_TAG[leg.mode] ?? leg.mode).padEnd(7)}] ${leg.from} -> ${leg.to}  ${fmtHours(leg.hours)}  ${fmtMoney(leg.costUSD)}  ${dim(leg.operator ?? '')}`);
+          const board = leg.dayOffset ? `  boards ${leg.legDate}` : '';
+          console.log(`     [${(MODE_TAG[leg.mode] ?? leg.mode).padEnd(7)}] ${leg.from} -> ${leg.to}  ${fmtHours(leg.hours)}  ${fmtMoney(leg.costUSD)}${board}  ${dim(leg.operator ?? '')}`);
+          if (leg.priceNote) console.log(dim(`               ${leg.priceNote}`));
           if (leg.bookLink) console.log(dim(`               ${leg.bookLink}`));
         }
       });
@@ -148,7 +180,7 @@ async function main() {
         console.log(dim(`    ${o.airlines.join(', ')}`));
         console.log(dim(`    ${o.links.googleFlights}`));
       }
-      const awards = awardOptions(from);
+      const awards = awardOptions(from, d);
       console.log(B('\n  Miles options (fewest miles first):'));
       for (const o of awards.options.slice(0, 10)) {
         console.log(`  ${o.from} -> ${o.to}  ~${o.miles.toLocaleString()} ${o.program} + ${fmtMoney(o.feesUSD)}  [${o.dataStatus}]`);

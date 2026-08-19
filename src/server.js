@@ -64,7 +64,7 @@ export function startServer(port = 8787) {
         }));
       } else if (url.pathname === '/api/backup') {
         const from = (q.get('from') || 'LAS').toUpperCase();
-        json(res, 200, { cash: backupCashOptions(from, date), awards: awardOptions(from) });
+        json(res, 200, { cash: backupCashOptions(from, date), awards: awardOptions(from, date) });
       } else if (url.pathname === '/api/hotels') {
         json(res, 200, hotelOptions((q.get('city') || 'vegas').toLowerCase(), q.get('date') || undefined));
       } else {

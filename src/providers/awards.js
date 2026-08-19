@@ -2,7 +2,7 @@
 // merged: Seats.aero Partner API (SEATS_AERO_API_KEY) and/or the Apify
 // flight-award-scraper actor (APIFY_TOKEN). With neither, seed program
 // estimates + links to each program's award search.
-import { loadJSON, fetchJSON, loadEnv, readSnapshot, writeSection, todayISO, addDaysISO } from '../util.js';
+import { loadJSON, fetchJSON, loadEnv, readSnapshot, writeSection, usableSection, todayISO, addDaysISO } from '../util.js';
 
 const seed = loadJSON('src/data/backup-flights.json');
 const sources = loadJSON('src/data/sources.json');
@@ -33,17 +33,25 @@ const toInt = (v) => {
   return Number.isFinite(n) ? n : null;
 };
 
-export function awardOptions(from) {
-  const snap = readSnapshot().sections.awards;
-  const live = snap?.status === 'live' ? snap.data?.availability ?? [] : [];
+// `date` matters: award searches cover a 3-day window, so a 9,500-mile seat
+// two days later would otherwise sort to the top of the list badged "live" and
+// reframe a decision about a date it isn't available on. An exact-date hit is
+// live; a nearby hit stays an estimate and says which day it was found.
+export function awardOptions(from, date = null) {
+  const sec = usableSection(readSnapshot().sections.awards);
+  const live = sec?.data?.availability ?? [];
   const options = [];
   for (const to of EAST_TARGETS) {
     const m = seed.markets[`${from}-${to}`];
     if (!m?.typicalMiles) continue;
     for (const [program, miles] of Object.entries(m.typicalMiles)) {
       // Cheapest live hit for this exact market+program across all sources.
-      const hits = live.filter((a) => a.from === from && a.to === to && a.program === program && a.miles != null);
-      const best = hits.sort((a, b) => a.miles - b.miles)[0];
+      const hits = live
+        .filter((a) => a.from === from && a.to === to && a.program === program && a.miles != null)
+        .sort((a, b) => a.miles - b.miles);
+      const onDate = date ? hits.filter((h) => h.date === date) : hits;
+      const best = onDate[0] ?? null;
+      const nearby = !best ? hits[0] ?? null : null;
       options.push({
         mode: 'award',
         from,
@@ -51,16 +59,20 @@ export function awardOptions(from) {
         program,
         miles: best?.miles ?? miles,
         feesUSD: { min: 6, max: 15 },
+        date: best?.date ?? null,
         dataStatus: best ? 'live' : 'estimate',
         source: best?.source ?? null,
         seats: best?.seats ?? null,
+        // Real availability, just not on the day being asked about. Worth
+        // showing - as an alternative date, never as this date's price.
+        nearbyLive: nearby ? { miles: nearby.miles, date: nearby.date ?? null, seats: nearby.seats ?? null, source: nearby.source ?? null } : null,
         searchLink: seed.milesPrograms[program]?.searchLink,
         notes: seed.milesPrograms[program]?.notes,
       });
     }
   }
   options.sort((a, b) => a.miles - b.miles);
-  return { from, closeInFees: seed.closeInFees, options };
+  return { from, date, searchedFor: sec?.data?.searchDate ?? null, closeInFees: seed.closeInFees, options };
 }
 
 // ---- Seats.aero ----

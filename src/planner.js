@@ -2,8 +2,8 @@
 // award flights, Amtrak, intercity bus, and local transit into complete
 // itineraries from the west coast back to Richmond/Norfolk, sorted by total
 // travel time then cost (or cost then time).
-import { loadJSON, readSnapshot, haversineMiles, estimateFlightHours, costMidpoint, addCosts } from './util.js';
-import { routeMap, gowildRules, searchLink, frequencyOf } from './providers/frontier.js';
+import { loadJSON, readSnapshot, haversineMiles, estimateFlightHours, costMidpoint, addCosts, addDaysISO } from './util.js';
+import { routeMap, gowildRules, searchLink, frequencyOf, operatesOn, isBlackout, dayOfWeek } from './providers/frontier.js';
 import { deepLinks } from './providers/flights.js';
 import { busLink, liveFare } from './providers/bus.js';
 import { amtrakLink, liveDelay } from './providers/amtrak.js';
@@ -59,6 +59,12 @@ export function buildEdges({ date, allowModes }) {
     const { routes } = routeMap();
     // Each planner gowild edge is its own one-way booking -> nonstop fees.
     const seg = gowildRules().fareFeesUSD.nonstop;
+    // Since 2026 a blackout is not a wall, it is a price: the Peak Day Charge
+    // unlocks the date. Ignoring it made blackout itineraries look 6-10x cheaper
+    // than they are, and win the cost sort on exactly the dates where cost
+    // matters most.
+    const blackout = isBlackout(date);
+    const peak = blackout ? gowildRules().peakDayChargeUSD ?? { min: 79, max: 159 } : null;
     const seen = new Set();
     for (const [from, dests] of Object.entries(routes)) {
       for (const to of dests) {
@@ -68,18 +74,31 @@ export function buildEdges({ date, allowModes }) {
           seen.add(key);
           const freq = frequencyOf(a, b);
           const live = gowildLive[`${a}-${b}`];
+          const base = live ? { min: live.fare, max: live.fare } : { min: seg.min, max: seg.max };
+          // A route that has not launched yet cannot be flown on this date, no
+          // matter what its days-per-week says.
+          const notLaunched = !!(freq?.startsOn && date < freq.startsOn);
           edges.push({
             mode: 'gowild',
             from: a,
             to: b,
             operator: freq?.days ? `Frontier GoWild (${freq.days})` : 'Frontier (GoWild pass)',
             hours: flightHours(a, b),
-            costUSD: live ? { min: live.fare, max: live.fare } : { min: seg.min, max: seg.max },
+            costUSD: peak ? addCosts(base, peak) : base,
+            seedCostUSD: peak ? addCosts({ min: seg.min, max: seg.max }, peak) : { min: seg.min, max: seg.max },
             daysPerWeek: freq?.daysPerWeek,
+            // false = this route definitively does not fly on this weekday.
+            operatesOnDate: notLaunched ? false : operatesOn(freq?.days, date),
+            notLaunchedUntil: notLaunched ? freq.startsOn : null,
+            peakDayChargeUSD: peak,
             dataStatus: live ? 'live' : 'estimate',
             seatsRemaining: live?.seats ?? null,
             bookLink: searchLink(a, b, date),
-            notes: 'Bookable day before departure; availability capacity-controlled.',
+            notes: notLaunched
+              ? `Route does not start until ${freq.startsOn}.`
+              : peak
+                ? `${blackout.label}: blackout date - flyable only with the Peak Day Charge ($${peak.min}-$${peak.max}), included above.`
+                : 'Bookable day before departure; availability capacity-controlled.',
           });
         }
       }
@@ -91,6 +110,11 @@ export function buildEdges({ date, allowModes }) {
     for (const [key, m] of Object.entries(backup.markets)) {
       const [from, to] = key.split('-');
       const live = liveOffers[key];
+      // A twice-weekly Breeze nonstop was being credited full nonstop block time
+      // on every date, so it swept rank 1 on the five days a week it doesn't
+      // fly. Carry the frequency so those itineraries can be marked and ranked
+      // behind ones that actually operate.
+      const perWeek = m.nonstopDaysPerWeek ?? null;
       edges.push({
         mode: 'flight',
         from,
@@ -98,6 +122,8 @@ export function buildEdges({ date, allowModes }) {
         operator: live?.carrier ? `${live.carrier} (live)` : m.airlines[0],
         hours: live?.durationHours ?? +((flightHours(from, to) ?? 5) + (m.nonstop ? 0 : 2.5)).toFixed(2),
         costUSD: live ? { min: live.priceUSD, max: live.priceUSD } : m.typicalCashUSD,
+        seedCostUSD: m.typicalCashUSD,
+        daysPerWeek: m.nonstop ? perWeek ?? undefined : undefined,
         dataStatus: live ? 'live' : 'estimate',
         bookLink: deepLinks(from, to, date).googleFlights,
         notes: m.airlines.join(', '),
@@ -166,6 +192,7 @@ export function buildEdges({ date, allowModes }) {
         operator: live ? `${b.operator} (live)` : b.operator,
         hours: live?.hours ?? b.hours,
         costUSD: live ? { min: live.priceUSD, max: live.priceUSD } : b.costUSD,
+        seedCostUSD: b.costUSD,
         dataStatus: live ? 'live' : 'estimate',
         bookLink: busLink(b.from, b.to, date),
         notes: b.notes,
@@ -197,6 +224,44 @@ export function transferBuffer(prevMode, nextMode) {
 
 const AIR = new Set(['gowild', 'flight', 'award']);
 
+// Booking links are rebuilt per leg, because the day you board leg 4 of a 55-hour
+// chain is not the day you started. Award links are undated program search pages.
+function bookLinkFor(edge, dateISO) {
+  switch (edge.mode) {
+    case 'gowild': return searchLink(edge.from, edge.to, dateISO);
+    case 'flight': return deepLinks(edge.from, edge.to, dateISO).googleFlights;
+    case 'train': return amtrakLink(edge.from, edge.to, dateISO);
+    case 'bus': return busLink(edge.from, edge.to, dateISO);
+    default: return edge.bookLink ?? null;
+  }
+}
+
+// Walk an itinerary in time: stamp each leg with the date you actually reach it,
+// re-link it to that date, and refuse to call a price "live" when it was fetched
+// for a different day. Fares climb toward departure, so a stale price is
+// systematically the cheap-looking one - exactly the error that flips a ranking.
+export function resolveLegs(legs, startDate) {
+  let elapsed = 0;
+  return legs.map((leg, i) => {
+    if (i > 0) elapsed += transferBuffer(legs[i - 1].mode, leg.mode);
+    const dayOffset = Math.floor(elapsed / 24);
+    const legDate = startDate ? addDaysISO(startDate, dayOffset) : null;
+    elapsed += leg.hours;
+    const priceIsForAnotherDay = leg.dataStatus === 'live' && dayOffset > 0;
+    return {
+      ...leg,
+      legDate,
+      dayOffset,
+      bookLink: legDate ? bookLinkFor(leg, legDate) : leg.bookLink,
+      costUSD: priceIsForAnotherDay ? leg.seedCostUSD ?? leg.costUSD : leg.costUSD,
+      dataStatus: priceIsForAnotherDay ? 'estimate' : leg.dataStatus,
+      priceNote: priceIsForAnotherDay
+        ? `live price was checked for ${startDate}; you board this leg ${legDate}, so the estimate range is shown`
+        : undefined,
+    };
+  });
+}
+
 // ---- itinerary search ----
 
 export function planReturn({ from = 'SFO', date, to = null, sort = 'time', maxLegs, maxResults, allowModes } = {}) {
@@ -208,6 +273,7 @@ export function planReturn({ from = 'SFO', date, to = null, sort = 'time', maxLe
     : ['richmond', 'norfolk'];
   const destSet = new Set(destGroups.flatMap((g) => airports.cityGroups[g] ?? [g]));
 
+  const dayName = date ? dayOfWeek(date) : 'that day';
   const edges = buildEdges({ date, allowModes });
   const byFrom = new Map();
   for (const e of edges) {
@@ -222,7 +288,7 @@ export function planReturn({ from = 'SFO', date, to = null, sort = 'time', maxLe
   function dfs(node, legs, hours, cost, miles, visitedMetros, visitedNodes) {
     if (destSet.has(node) && legs.length > 0) {
       // The path is complete the moment it reaches the destination metro.
-      results.push(finishItinerary(legs, hours, cost, miles, node));
+      results.push(finishItinerary(legs, node));
       return;
     }
     if (legs.length >= maxLegs) return;
@@ -241,13 +307,38 @@ export function planReturn({ from = 'SFO', date, to = null, sort = 'time', maxLe
     }
   }
 
-  function finishItinerary(legs, hours, cost, miles, arrivalNode) {
+  // Totals are recomputed from the RESOLVED legs, not from what the search
+  // accumulated, because resolution can change a leg's price (a live fare that
+  // turns out to belong to a different day falls back to its estimate range).
+  function finishItinerary(rawLegs, arrivalNode) {
+    const legs = resolveLegs(rawLegs, date);
+    let hours = 0;
+    let cost = { min: 0, max: 0 };
+    let miles = 0;
+    legs.forEach((l, i) => {
+      if (i > 0) hours += transferBuffer(legs[i - 1].mode, l.mode);
+      hours += l.hours;
+      cost = addCosts(cost, l.costUSD ?? 0);
+      miles += l.miles ?? 0;
+    });
+
     const arrivalMetro = metro(arrivalNode);
     const modes = [...new Set(legs.map((l) => l.mode))];
+    // An itinerary is only real if every leg actually operates on the day you
+    // would board it. Anything with a leg that definitively does not run gets
+    // ranked below everything that does, however fast or cheap it looks.
+    const grounded = legs.filter((l) => l.operatesOnDate === false);
+    const flyable = grounded.length === 0;
+    const blackoutLegs = legs.filter((l) => l.peakDayChargeUSD);
+
     const badges = [];
     if (legs.every((l) => l.mode === 'gowild' || l.mode === 'transit')) badges.push('all-GoWild');
+    if (!flyable) badges.push(grounded[0].notLaunchedUntil ? `route starts ${grounded[0].notLaunchedUntil}` : `no ${dayName} service`);
+    if (blackoutLegs.length) badges.push('peak-day-charge');
     if (legs.some((l) => l.daysPerWeek && l.daysPerWeek < 7)) badges.push('not-daily');
     if (miles > 0) badges.push('uses-miles');
+
+    const dayOffset = Math.floor(hours / 24);
     const sortCost = costMidpoint(cost) + (miles * CENTS_PER_MILE) / 100;
     return {
       from,
@@ -258,6 +349,12 @@ export function planReturn({ from = 'SFO', date, to = null, sort = 'time', maxLe
       totalCostUSD: { min: Math.round(cost.min), max: Math.round(cost.max) },
       totalMiles: miles || 0,
       sortCost: Math.round(sortCost),
+      // "61h06m" answers the wrong question; "arrive Sun Aug 23 (+3 days)"
+      // answers the one the traveler is actually asking.
+      arrivalDate: date ? addDaysISO(date, dayOffset) : null,
+      daysSpanned: dayOffset,
+      flyable,
+      groundedLegs: grounded.map((l) => `${l.from}-${l.to}`),
       modes,
       badges,
     };
@@ -266,11 +363,14 @@ export function planReturn({ from = 'SFO', date, to = null, sort = 'time', maxLe
   dfs(from, [], 0, { min: 0, max: 0 }, 0, new Set([startMetro]), new Set([from]));
 
   // Rank: prefer fewer legs among near-identical totals; primary sort per flag.
-  results.sort((a, b) =>
-    sort === 'cost'
+  // Flyable first, always: a 2x-weekly chain that does not run on this date is
+  // not a faster option, it is not an option. Then the requested sort.
+  const rank = (a, b) =>
+    (a.flyable === b.flyable ? 0 : a.flyable ? -1 : 1)
+    || (sort === 'cost'
       ? a.sortCost - b.sortCost || a.totalHours - b.totalHours
-      : a.totalHours - b.totalHours || a.sortCost - b.sortCost,
-  );
+      : a.totalHours - b.totalHours || a.sortCost - b.sortCost);
+  results.sort(rank);
 
   // Dedupe identical leg-sequences, then take the top N - but guarantee mode
   // diversity: even when flights sweep the top of the list, always surface the
@@ -291,11 +391,7 @@ export function planReturn({ from = 'SFO', date, to = null, sort = 'time', maxLe
     }
   }
   // Re-sort so diversity picks land in their proper ranked position.
-  kept.sort((a, b) =>
-    sort === 'cost'
-      ? a.sortCost - b.sortCost || a.totalHours - b.totalHours
-      : a.totalHours - b.totalHours || a.sortCost - b.sortCost,
-  );
+  kept.sort(rank);
   return {
     from,
     date,

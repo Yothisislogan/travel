@@ -37,27 +37,47 @@ export async function publish({ date, push = true, sections } = {}) {
   const results = await syncAll({ sections, date });
   const snap = readSnapshot();
 
-  const payload = {
-    publishedAt: new Date().toISOString(),
-    publishedFrom: 'local machine (residential IP)',
-    sections: snap.sections ?? {},
-  };
-  saveJSON(REL, payload);
+  // Merge over the last publish rather than replacing it. A run where Frontier
+  // blocked produces an all-seed snapshot; writing that would wipe good seats
+  // off the phone dashboard - and with `publish --install` running unattended
+  // every 30 minutes, the first blocked run after a good one would do it
+  // silently. Live always wins; non-live never overwrites live.
+  const previous = readPublished();
+  const merged = { ...(previous?.sections ?? {}) };
+  for (const [name, sec] of Object.entries(snap.sections ?? {})) {
+    const wouldDowngrade = merged[name]?.status === 'live' && sec?.status !== 'live';
+    if (!wouldDowngrade) merged[name] = sec;
+  }
 
-  const live = Object.entries(payload.sections)
+  const live = Object.entries(merged)
+    .filter(([, s]) => s?.status === 'live')
+    .map(([name]) => name);
+  const captured = Object.entries(snap.sections ?? {})
     .filter(([, s]) => s?.status === 'live')
     .map(([name]) => name);
 
-  if (!push) return { results, live, pushed: false, path: REL };
+  // Only publishedAt would differ - don't churn a commit (and a Pages deploy)
+  // for a run that learned nothing.
+  if (previous && JSON.stringify(previous.sections ?? {}) === JSON.stringify(merged)) {
+    return { results, live, captured, pushed: false, reason: 'nothing new came back live', path: REL };
+  }
+
+  saveJSON(REL, {
+    publishedAt: new Date().toISOString(),
+    publishedFrom: 'local machine (residential IP)',
+    sections: merged,
+  });
+
+  if (!push) return { results, live, captured, pushed: false, path: REL };
 
   const changed = git(['status', '--porcelain', REL]);
-  if (!changed) return { results, live, pushed: false, reason: 'no change since last publish', path: REL };
+  if (!changed) return { results, live, captured, pushed: false, reason: 'no change since last publish', path: REL };
 
   git(['add', REL]);
-  git(['commit', '-m', `live snapshot: ${live.length ? live.join(', ') : 'seed'} (${payload.publishedAt})`]);
+  git(['commit', '-m', `live snapshot: ${live.length ? live.join(', ') : 'seed'}`]);
   const branch = git(['rev-parse', '--abbrev-ref', 'HEAD']);
   git(['push', 'origin', branch]);
-  return { results, live, pushed: true, branch, path: REL };
+  return { results, live, captured, pushed: true, branch, path: REL };
 }
 
 // Keep publishing on an interval, so the phone dashboard stays fresh without
@@ -69,8 +89,8 @@ export async function watch({ everyMinutes = 30, date, sections, once = false } 
     const started = new Date().toISOString();
     try {
       const r = await publish({ date, sections });
-      console.log(`[${started}] published ${r.live.length ? r.live.join(', ') : 'seed only'}`
-        + (r.pushed ? ` -> pushed to ${r.branch}` : ` (${r.reason ?? 'not pushed'})`));
+      console.log(`[${started}] captured ${r.captured.length ? r.captured.join(', ') : 'nothing live'}`
+        + (r.pushed ? ` -> pushed to ${r.branch} (published: ${r.live.join(', ') || 'seed'})` : ` (${r.reason ?? 'not pushed'})`));
     } catch (err) {
       console.error(`[${started}] publish failed: ${err.message}`);
     }

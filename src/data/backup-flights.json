@@ -31,7 +31,8 @@
         "Southwest Rapid Rewards": 20000,
         "Atmos Rewards": 15000
       },
-      "milesRange": "AA/UA 12.5k-35k, DL 15k-50k, WN 15k-35k (fare-linked), Atmos 12.5k-30k on AA metal + $20 fee"
+      "milesRange": "AA/UA 12.5k-35k, DL 15k-50k, WN 15k-35k (fare-linked), Atmos 12.5k-30k on AA metal + $20 fee",
+      "nonstopDaysPerWeek": 3
     },
     "LAS-ORF": {
       "airlines": [
@@ -52,7 +53,8 @@
         "Delta SkyMiles": 22500,
         "Atmos Rewards": 15000
       },
-      "milesRange": "AA/UA 12.5k-35k, DL 15k-50k, Atmos 12.5k-30k on AA metal"
+      "milesRange": "AA/UA 12.5k-35k, DL 15k-50k, Atmos 12.5k-30k on AA metal",
+      "nonstopDaysPerWeek": 2
     },
     "LAS-DCA": {
       "airlines": [
@@ -74,7 +76,8 @@
       "nonstopPrograms": [
         "American AAdvantage",
         "Southwest Rapid Rewards"
-      ]
+      ],
+      "nonstopDaysPerWeek": 7
     },
     "LAS-IAD": {
       "airlines": [
@@ -92,7 +95,8 @@
       "milesRange": "UA 12.5k-35k",
       "nonstopPrograms": [
         "United MileagePlus"
-      ]
+      ],
+      "nonstopDaysPerWeek": 7
     },
     "LAS-BWI": {
       "airlines": [
@@ -110,7 +114,8 @@
       "milesRange": "WN fare-linked ~1.15-1.7cpp",
       "nonstopPrograms": [
         "Southwest Rapid Rewards"
-      ]
+      ],
+      "nonstopDaysPerWeek": 7
     },
     "LAS-RDU": {
       "airlines": [
@@ -148,7 +153,8 @@
         "Delta SkyMiles": 22500,
         "Atmos Rewards": 15000
       },
-      "milesRange": "AA 12.5k-35k, UA 15k-35k, DL 15k-50k, Atmos 12.5k-30k on AA metal"
+      "milesRange": "AA 12.5k-35k, UA 15k-35k, DL 15k-50k, Atmos 12.5k-30k on AA metal",
+      "nonstopDaysPerWeek": 2
     },
     "SFO-ORF": {
       "airlines": [
@@ -183,7 +189,8 @@
       "milesRange": "UA 12.5k-35k; high frequency = best same-day rebooking odds",
       "nonstopPrograms": [
         "United MileagePlus"
-      ]
+      ],
+      "nonstopDaysPerWeek": 7
     },
     "SFO-DCA": {
       "airlines": [

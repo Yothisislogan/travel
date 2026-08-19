@@ -2,7 +2,7 @@
 // (matched to the named MGM/Caesars properties and the SF market); the actual
 // member/express rate is captured by booking through the linked source:
 // MGM Rewards / Caesars Rewards (sign-in) or Priceline Express Deals (opaque).
-import { loadJSON, fetchJSON, loadEnv, readSnapshot, writeSection, todayISO, addDaysISO } from '../util.js';
+import { loadJSON, fetchJSON, loadEnv, readSnapshot, writeSection, usableSection, todayISO, addDaysISO } from '../util.js';
 
 const hotels = loadJSON('src/data/hotels.json');
 const sources = loadJSON('src/data/sources.json');
@@ -50,8 +50,12 @@ export function hotelOptions(cityKey, dateISO) {
   const city = hotels.cities[cityKey];
   if (!city) return { city: cityKey, error: `Unknown city '${cityKey}'. Try: ${Object.keys(hotels.cities).join(', ')}` };
   const { checkIn, checkOut, nights } = hotelDates(dateISO);
-  const snap = readSnapshot().sections.hotels;
-  const live = snap?.status === 'live' ? snap.data?.properties?.[cityKey] ?? [] : [];
+  // Vegas rates swing 5x by date, so a rate synced for a different check-in is
+  // not an estimate of this one - it is a different hotel night. Only use live
+  // rates when the snapshot was actually searched for THIS check-in.
+  const sec = usableSection(readSnapshot().sections.hotels);
+  const sameStay = !!sec && sec.data?.checkIn === checkIn;
+  const live = sameStay ? sec.data?.properties?.[cityKey] ?? [] : [];
 
   const groups = city.groups.map((g) => {
     const dateVars = { checkIn, checkOut, slug: '', city: city.label };
@@ -63,7 +67,7 @@ export function hotelOptions(cityKey, dateISO) {
       // Priceline Express Deals - opaque, presented by star tier. Live rates
       // (RapidAPI passthrough to PPN getExpress.Results) replace the estimate
       // for whichever star tiers came back.
-      const liveExpress = snap?.status === 'live' ? snap.data?.express ?? [] : [];
+      const liveExpress = sameStay ? sec.data?.express ?? [] : [];
       const tiers = (g.tiers ?? []).map((t) => {
         const hit = liveExpress.find((e) => Math.round(e.star ?? 0) === Math.round(t.star));
         return {
@@ -106,7 +110,7 @@ export function hotelOptions(cityKey, dateISO) {
     return { brand: g.brand, program: g.program, pricingNote: g.pricingNote, properties };
   });
 
-  return { city: city.label, cityKey, checkIn, checkOut, nights, groups };
+  return { city: city.label, cityKey, checkIn, checkOut, nights, groups, liveRatesFor: sec?.data?.checkIn ?? null, ratesMatchDates: sameStay };
 }
 
 // ---- Priceline Express Deals (RapidAPI priceline-com-provider) ----

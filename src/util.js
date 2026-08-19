@@ -131,12 +131,44 @@ export function readSnapshot() {
   }
 }
 
+// `fetchedAt` means "when this data was captured", never "when we last wrote
+// the file". Providers don't pass one, so they stamp now; the published-snapshot
+// fold passes the capture time through, which is the only way a phone can be
+// told that seats it is looking at are three hours old.
 export function writeSection(name, payload) {
   const snap = readSnapshot();
-  snap.sections[name] = { ...payload, fetchedAt: new Date().toISOString() };
+  snap.sections[name] = {
+    ...payload,
+    fetchedAt: payload.fetchedAt ?? new Date().toISOString(),
+    writtenAt: new Date().toISOString(),
+  };
   mkdirSync(CACHE_DIR, { recursive: true });
   writeFileSync(SNAPSHOT_PATH, JSON.stringify(snap, null, 2));
   return snap.sections[name];
+}
+
+// A failed refresh must not delete data that already worked. Frontier blocking
+// a datacenter IP is the EXPECTED outcome, not an exception - overwriting live
+// seats with a seed payload every time that happens is how the one number the
+// traveler acts on disappears at the worst moment.
+export function keepLastGood(name, notes) {
+  const prev = readSnapshot().sections[name];
+  if (prev?.status !== 'live' && prev?.status !== 'stale') return null;
+  const capturedAt = prev.lastLiveAt ?? prev.fetchedAt;
+  return writeSection(name, {
+    ...prev,
+    status: 'stale',
+    lastLiveAt: capturedAt,
+    fetchedAt: capturedAt,
+    notes: `${notes} Still showing the last live data, captured ${capturedAt}.`,
+  });
+}
+
+// 'stale' means "real data whose refresh was blocked" - still the best thing we
+// have, and better than silently falling back to seed estimates. Readers should
+// use it; labels must say it is not fresh.
+export function usableSection(section) {
+  return section?.status === 'live' || section?.status === 'stale' ? section : null;
 }
 
 export function sectionAge(section) {
@@ -148,7 +180,25 @@ export function freshnessLabel(section, staleAfterHours = 6) {
   if (!section) return 'never synced';
   const age = sectionAge(section);
   const ageStr = age == null ? '' : age < 1 ? `${Math.round(age * 60)}m ago` : `${age.toFixed(1)}h ago`;
-  const base = section.status === 'live' ? 'live' : section.status === 'error' ? 'seed (live fetch failed)' : 'seed estimates';
+  const base = section.status === 'live' ? 'live'
+    : section.status === 'stale' ? 'last live data (refresh blocked)'
+      : section.status === 'error' ? 'seed (live fetch failed)' : 'seed estimates';
   const stale = age != null && age > staleAfterHours ? ', stale' : '';
-  return `${base}, synced ${ageStr}${stale}`;
+  return `${base}, captured ${ageStr}${stale}`;
+}
+
+// GoWild inventory turns over in minutes, so "live" without an age is a lie the
+// moment it is ten minutes old. Returns 'fresh' | 'aging' | 'old' | null.
+export function liveAgeClass(fetchedAt, { agingHours = 1, oldHours = 3 } = {}) {
+  if (!fetchedAt) return null;
+  const h = (Date.now() - Date.parse(fetchedAt)) / 3600000;
+  if (!Number.isFinite(h)) return null;
+  return h >= oldHours ? 'old' : h >= agingHours ? 'aging' : 'fresh';
+}
+
+export function shortAge(fetchedAt) {
+  if (!fetchedAt) return '';
+  const m = Math.round((Date.now() - Date.parse(fetchedAt)) / 60000);
+  if (!Number.isFinite(m)) return '';
+  return m < 1 ? 'just now' : m < 60 ? `${m}m` : `${Math.round(m / 60)}h`;
 }

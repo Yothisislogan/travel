@@ -12,6 +12,7 @@
     "perExtraSegment": { "min": 4, "max": 10 },
     "notes": "Base fare $0.01/segment + taxes/fees. The TSA September 11 fee ($5.60) applies per one-way trip, NOT per segment; extra segments add airport facility charges (~$4-10 each). So a domestic nonstop runs ~$15 and a one-stop ~$20-30. International runs ~$60-110+ per direction."
   },
+  "peakDayChargeUSD": { "min": 79, "max": 159, "_note": "Per-segment charge that unlocks a blackout date. Researched 2026-08-17 - VERIFY against your pass terms." },
   "peakDayCharge": "2026 change: blackout dates are no longer absolute - a Peak Day Charge (from $79, up to ~$159; pin to your pass's published terms) lets you fly on blackout dates.",
   "blackoutDates": [
     { "range": "2026-09-03/2026-09-04", "label": "Labor Day period" },

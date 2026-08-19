@@ -5,7 +5,7 @@
 // bookable *right now* under GoWild day-before rules, and (4) emits prefilled
 // search deep links for the flights you should check in the app.
 import {
-  loadJSON, fetchJSON, readSnapshot, writeSection,
+  loadJSON, fetchJSON, readSnapshot, writeSection, keepLastGood,
   haversineMiles, estimateFlightHours, todayISO, addDaysISO, BROWSER_HEADERS,
 } from '../util.js';
 
@@ -163,25 +163,70 @@ export function findGowildPaths(fromList, toList, { maxConnections = 1 } = {}) {
   return paths;
 }
 
+// Resolve live seat data SEGMENT BY SEGMENT.
+//
+// Matching a checklist entry on endpoints alone pasted the RIC-LAS nonstop's
+// seat count onto RIC->DEN->LAS and RIC->MCO->LAS as well, so one flight with
+// five seats rendered as three bookable options and fifteen seats. A connection
+// is only confirmed when every one of its segments was actually searched, and
+// its bookable count is the scarcest segment, not the sum.
+export function liveForPath(path, checklist, dateISO) {
+  const hit = (from, to) => checklist.find((c) => c.pair === `${from}-${to}` && c.date === dateISO && c.status === 'live');
+  const segments = path.segments.map((s) => {
+    const c = hit(s.from, s.to);
+    if (!c) return { from: s.from, to: s.to, checked: false };
+    return {
+      from: s.from,
+      to: s.to,
+      checked: true,
+      gowildFlights: c.gowildFlights,
+      flights: (c.flights ?? []).filter((f) => f.gowildEnabled).slice(0, 6),
+    };
+  });
+  const checked = segments.filter((s) => s.checked);
+  if (!checked.length) return null;
+  return {
+    segments,
+    complete: checked.length === segments.length,
+    checkedSegments: checked.length,
+    totalSegments: segments.length,
+    // The whole path is only bookable as often as its scarcest checked segment.
+    gowildFlights: Math.min(...checked.map((s) => s.gowildFlights)),
+    // Only a nonstop can carry a flat flight list without implying a
+    // connection nobody verified.
+    flights: segments.length === 1 ? segments[0].flights : [],
+  };
+}
+
 // Decorate paths with booking-window state and deep links for a date.
 export function gowildOptions(fromList, toList, dateISO) {
   const window = bookingWindow(dateISO);
   const blackout = isBlackout(dateISO);
-  const checklist = readSnapshot().sections.frontier?.data?.checklist ?? [];
+  const section = readSnapshot().sections.frontier;
+  const checklist = section?.data?.checklist ?? [];
   const paths = findGowildPaths(fromList, toList).map((p) => {
     // Does every segment with named operating days run on this date's weekday?
     const segOps = p.segments.map((s) => operatesOn(frequencyOf(s.from, s.to)?.days, dateISO));
     const operatesOnDate = segOps.some((x) => x === false) ? false : segOps.every((x) => x === true) ? true : null;
-    const live = checklist.find((c) => c.pair === `${p.from}-${p.to}` && c.date === dateISO && c.status === 'live');
+    // On a blackout date the fee estimate is not the price: the Peak Day Charge
+    // is what makes the date flyable at all, so fold it in per segment rather
+    // than printing "$19-35" under a warning that says "+$79-159".
+    const peak = blackout ? rules.peakDayChargeUSD ?? null : null;
+    const estCostUSD = peak
+      ? {
+        min: p.estCostUSD.min + peak.min * p.segments.length,
+        max: p.estCostUSD.max + peak.max * p.segments.length,
+      }
+      : p.estCostUSD;
     return {
       ...p,
       mode: 'gowild',
       operatesOnDate,
+      estCostUSD,
+      peakDayChargeUSD: peak,
       dayOfWeek: dayOfWeek(dateISO),
       searchLink: searchLink(p.from, p.to, dateISO),
-      live: live
-        ? { gowildFlights: live.gowildFlights, flights: live.flights.filter((f) => f.gowildEnabled).slice(0, 6) }
-        : null,
+      live: liveForPath(p, checklist, dateISO),
     };
   });
   return {
@@ -189,6 +234,10 @@ export function gowildOptions(fromList, toList, dateISO) {
     window,
     blackout,
     paths,
+    // When the live seats were actually captured - not when the file was last
+    // written. Renderers must show this next to any 'live' badge.
+    capturedAt: paths.some((p) => p.live) ? section?.fetchedAt ?? null : null,
+    dataStatus: section?.status ?? 'never',
     trackers: sources.frontier.communityTrackers ?? [],
     freshness: routeMap().asOf,
     warning: routeMap().freshnessWarning,
@@ -246,6 +295,17 @@ export async function sync({ date } = {}) {
     // Polite pacing between requests; stop hammering once clearly blocked.
     if (blocked || unreachable) break;
     await sleep(2000 + Math.floor(Math.random() * 2000));
+  }
+  // A block is the EXPECTED outcome from a datacenter IP, and it is exactly why
+  // publish.js and worker.js exist - so don't let it delete seats we already
+  // have. Only a run that actually saw fares may replace the section.
+  if (liveCount === 0) {
+    const kept = keepLastGood('frontier', blocked
+      ? 'Frontier blocked this refresh (bot protection).'
+      : unreachable
+        ? 'Could not reach Frontier from here.'
+        : 'Reached Frontier but found no fare data in the response.');
+    if (kept) return kept;
   }
   return writeSection('frontier', {
     status: liveCount > 0 ? 'live' : 'seed',

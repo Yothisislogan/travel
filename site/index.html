@@ -56,7 +56,7 @@
   </section>
 
   <section class="wide" id="secHotels">
-    <h2>Hotels <select id="hoCity"><option value="vegas">Las Vegas</option><option value="sf">San Francisco</option></select></h2>
+    <h2>Hotels <select id="hoCity"><option value="vegas">Las Vegas</option><option value="sf">San Francisco</option></select> <select id="hoDate"></select></h2>
     <div id="hotelsBody" class="empty">loading&hellip;</div>
   </section>
 
@@ -263,6 +263,19 @@ function seatsHTML() {
   return h;
 }
 
+// GoWild inventory turns over in minutes. A "live" badge with no age on a
+// capture from this morning is how you end up at the airport for a seat that
+// went hours ago, so the age is always attached and gets loud past an hour.
+function liveTag(capturedAt) {
+  if (!capturedAt) return '<span class="tag live">live</span>';
+  const mins = Math.round((Date.now() - Date.parse(capturedAt)) / 60000);
+  if (!isFinite(mins)) return '<span class="tag live">live</span>';
+  const age = mins < 1 ? 'now' : mins < 60 ? mins + 'm' : Math.round(mins / 60) + 'h';
+  const cls = mins >= 180 ? 'bad' : mins >= 60 ? 'warn' : 'live';
+  const label = mins >= 60 ? age + ' old — recheck' : 'live · ' + age;
+  return '<span class="tag ' + cls + '" title="captured ' + esc(capturedAt) + '">' + esc(label) + '</span>';
+}
+
 function gowildHTML(d) {
   if (!d) return '<div class="empty">No data for this date — run Sync.</div>';
   let h = '<div class="note ' + (d.window && d.window.canBookNow ? 'ok' : 'warn') + '">' + esc(d.window && d.window.note) + '</div>';
@@ -274,11 +287,19 @@ function gowildHTML(d) {
       + (p.operatesOnDate === false ? ' <span class="tag bad">no ' + esc(p.dayOfWeek) + ' service</span>' : '')
       + '<div class="dim" style="margin-top:4px">~' + hrs(p.totalHours) + ' · ' + money(p.estCostUSD) + ' fees · <a target="_blank" rel="noopener" href="' + esc(p.searchLink) + '">check fares ↗</a></div>';
     if (p.live) {
-      if (!p.live.gowildFlights) h += '<div class="leg"><span class="tag live">live</span> no GoWild seats showing</div>';
-      for (const f of p.live.flights ?? []) {
-        h += '<div class="leg"><span class="tag live">live</span> ' + (f.flightNumber ? '#' + esc(f.flightNumber) + ' ' : '') + esc(f.departure || '')
-          + ' · $' + esc(f.goWildFare ?? '?') + ' · ' + (f.goWildSeatsRemaining != null ? esc(f.goWildSeatsRemaining) + ' seat(s) left' : 'available') + '</div>';
+      // Segment by segment: a nonstop's seat count says nothing about a
+      // connection through another city, and an unsearched segment must say so.
+      for (const s of p.live.segments ?? []) {
+        const pair = esc(s.from + '→' + s.to);
+        if (!s.checked) { h += '<div class="leg"><span class="tag warn">?</span> ' + pair + ' not searched — connection unconfirmed</div>'; continue; }
+        if (!s.gowildFlights) { h += '<div class="leg">' + liveTag(d.capturedAt) + ' ' + pair + ': no GoWild seats showing</div>'; continue; }
+        for (const f of s.flights ?? []) {
+          h += '<div class="leg">' + liveTag(d.capturedAt) + ' ' + (p.via ? pair + ' ' : '')
+            + (f.flightNumber ? '#' + esc(f.flightNumber) + ' ' : '') + esc(f.departure || '')
+            + ' · $' + esc(f.goWildFare ?? '?') + ' · ' + (f.goWildSeatsRemaining != null ? esc(f.goWildSeatsRemaining) + ' seat(s) left' : 'available') + '</div>';
+        }
       }
+      if (!p.live.complete) h += '<div class="leg dim">' + esc(p.live.checkedSegments) + '/' + esc(p.live.totalSegments) + ' segments searched — whole path not confirmed</div>';
     } else {
       // No synced/published data for this path — fall back to whatever the
       // relay fetched from this device, per segment.
@@ -330,7 +351,7 @@ function render() {
     // Populate every date picker from the rolling window, once, defaulting to
     // the first bookable day (tomorrow).
     const dates = DATA.dates || Object.keys(DATA.outbound || {});
-    for (const id of ['obDate', 'hopDate', 'retDate', 'buDate']) {
+    for (const id of ['obDate', 'hopDate', 'retDate', 'buDate', 'hoDate']) {
       const el = $(id);
       if (el && el.options.length !== dates.length) {
         el.innerHTML = dates.map((d) => '<option value="' + esc(d) + '">' + esc(dateLabel(d)) + '</option>').join('');
@@ -345,11 +366,18 @@ function render() {
     let rh = '';
     (plan?.itineraries ?? []).forEach((it, i) => {
       rh += '<div class="row"><div><span class="rank">' + (i + 1) + '.</span> <span class="rank">' + hrs(it.totalHours) + '</span> '
-        + '<span class="num">· ' + money(it.totalCostUSD) + (it.totalMiles ? ' + ' + it.totalMiles.toLocaleString() + ' mi' : '') + '</span> · arrive <b>' + esc(it.arrival) + '</b> '
+        + '<span class="num">· ' + money(it.totalCostUSD) + (it.totalMiles ? ' + ' + it.totalMiles.toLocaleString() + ' mi' : '') + '</span> · arrive <b>' + esc(it.arrival) + '</b>'
+        // "61h" makes you do the arithmetic; the arrival date answers the
+        // question you were actually asking.
+        + (it.arrivalDate ? ' <b>' + esc(dateLabel(it.arrivalDate)) + '</b>' + (it.daysSpanned ? ' <span class="dim">(+' + esc(it.daysSpanned) + 'd)</span>' : '') : '') + ' '
+        + (it.flyable === false ? '<span class="tag bad" title="' + esc((it.groundedLegs || []).join(', ')) + '">does not run this day</span>' : '')
         + (it.badges ?? []).map((b) => '<span class="tag">' + esc(b) + '</span>').join('') + '</div>';
       for (const leg of it.legs) {
         rh += '<div class="leg">' + tag(leg.mode) + route(leg.from, null, leg.to) + ' <span class="dim">· ' + hrs(leg.hours) + ' · ' + money(leg.costUSD)
           + ' · ' + esc(leg.operator || '') + '</span>'
+          + (leg.dayOffset ? ' <span class="tag">boards ' + esc(dateLabel(leg.legDate)) + '</span>' : '')
+          + (leg.operatesOnDate === false ? ' <span class="tag bad">no service</span>' : '')
+          + (leg.priceNote ? ' <span class="tag warn" title="' + esc(leg.priceNote) + '">price est.</span>' : '')
           + (leg.dataStatus === 'live' ? ' <span class="tag live">live</span>' : '')
           + (leg.timeStatus === 'live' && leg.delayMinutes > 0 ? ' <span class="tag warn">+' + esc(leg.delayMinutes) + 'm late</span>' : '')
           + (leg.timeStatus === 'live' && leg.delayMinutes <= 0 ? ' <span class="tag live">on time</span>' : '')
@@ -361,7 +389,7 @@ function render() {
     $('returnBody').innerHTML = rh || '<div class="empty">No plans yet — run Sync.</div>';
 
     const buDate = $('buDate').value;
-    const bu = DATA.backup?.[$('buFrom').value];
+    const bu = DATA.backup?.[$('buFrom').value + ':' + buDate];
     let bh = '';
     if (bu) {
       bh = '<div class="dim" style="margin-bottom:4px"><b>Cash</b> — cheapest markets first · for <b>' + esc(dateLabel(buDate)) + '</b></div>';
@@ -379,7 +407,7 @@ function render() {
     }
     $('backupBody').innerHTML = bh || '<div class="empty">No backup data — run Sync.</div>';
 
-    $('hotelsBody').innerHTML = hotelsHTML(DATA.hotels?.[$('hoCity').value]);
+    $('hotelsBody').innerHTML = hotelsHTML(DATA.hotels?.[$('hoCity').value + ':' + $('hoDate').value]);
 
     $('seatsBody').innerHTML = seatsHTML();
 
@@ -647,7 +675,7 @@ $('relayTest').addEventListener('click', async () => {
 });
 $('seatsBtn').addEventListener('click', checkSeats);
 
-for (const id of ['obDate', 'hopDate', 'retFrom', 'retSort', 'retDate', 'buFrom', 'buDate', 'hoCity']) $(id).addEventListener('change', render);
+for (const id of ['obDate', 'hopDate', 'retFrom', 'retSort', 'retDate', 'buFrom', 'buDate', 'hoCity', 'hoDate']) $(id).addEventListener('change', render);
 
 loadData().then((d) => { DATA = d; render(); }).catch((err) => showError('loading data', err));
 </script>

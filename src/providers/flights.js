@@ -6,7 +6,7 @@
 //      prices skew United-and-friends only.
 //   3. Seed estimates + prefilled Google Flights/Kayak links.
 import {
-  loadJSON, fetchJSON, loadEnv, readSnapshot, writeSection,
+  loadJSON, fetchJSON, loadEnv, readSnapshot, writeSection, usableSection,
   haversineMiles, estimateFlightHours, todayISO, addDaysISO,
 } from '../util.js';
 import { fill } from './frontier.js';
@@ -39,8 +39,14 @@ export function deepLinks(from, to, date) {
 
 // Options for one origin, merged live-over-seed.
 export function backupCashOptions(from, date) {
-  const snap = readSnapshot().sections.flights;
-  const live = snap?.status === 'live' ? snap.data?.offers ?? {} : {};
+  // A price fetched for another day is not this day's price. The planner has
+  // always checked this; the backup card - the screen you actually buy from
+  // when stranded - did not, so the two disagreed and the confident-looking
+  // one was wrong.
+  const sec = usableSection(readSnapshot().sections.flights);
+  const searchDate = sec?.data?.searchDate ?? null;
+  const dateMatches = !!date && searchDate === date;
+  const live = dateMatches ? sec.data?.offers ?? {} : {};
   const options = [];
   for (const to of EAST_TARGETS) {
     const key = marketKey(from, to);

@@ -15,16 +15,27 @@ import { syncStatus } from '../src/sync.js';
 
 // Frontier blocks GitHub's datacenter IPs, so a build here can never see live
 // GoWild seats. If `node src/cli.js publish` captured them from a residential
-// connection, fold that in first - anything newer than what this build just
-// synced wins, so the phone dashboard shows real seats.
+// connection, fold that in first.
+//
+// Gate on STATUS, not recency. pages.yml runs `sync` before this script, and a
+// bot-blocked Frontier sync writes a seed section stamped now - so a recency
+// test always loses and the residentially-captured seats get thrown away. Live
+// beats non-live regardless of age; live only loses to fresher live.
 const published = readPublished();
 if (published?.sections) {
   for (const [name, sec] of Object.entries(published.sections)) {
+    if (sec?.status !== 'live') continue;
     const current = readSnapshot().sections[name];
-    const newer = !current?.fetchedAt || Date.parse(sec.fetchedAt ?? 0) > Date.parse(current.fetchedAt);
-    if (sec?.status === 'live' && newer) {
-      writeSection(name, { ...sec, notes: `${sec.notes} (published from your own connection ${sec.fetchedAt})` });
-    }
+    const beats = current?.status !== 'live'
+      || Date.parse(sec.fetchedAt ?? 0) > Date.parse(current.fetchedAt ?? 0);
+    if (!beats) continue;
+    writeSection(name, {
+      ...sec,
+      // fetchedAt rides along in ...sec, so writeSection preserves the real
+      // capture time instead of re-stamping it to this build's clock.
+      publishedFrom: published.publishedFrom ?? 'your own connection',
+      notes: `${sec.notes} (captured from your own connection ${sec.fetchedAt})`,
+    });
   }
 }
 
@@ -49,7 +60,7 @@ function sectionStatus() {
       k,
       // Data published from the user's own connection is genuinely live - don't
       // relabel it as a seed build just because this build made no API calls.
-      v.status === 'live'
+      v.status === 'live' || v.status === 'stale'
         ? v
         : { ...v, status: 'seed', notes: 'Seed build from a code push - no API calls made. Press Sync for live data.' },
     ]),
@@ -79,12 +90,15 @@ const data = {
       ),
     ),
   ),
-  // Backup award/cash data is date-independent (only deep-link dates differ),
-  // so key by origin only; the page rebuilds the dated Google Flights link.
+  // The backup card has its own date picker, so it needs a plan per date -
+  // building it once for tomorrow and keying by origin meant every date in the
+  // dropdown rendered tomorrow's prices.
   backup: Object.fromEntries(
-    ['LAS', 'SFO'].map((from) => [from, { cash: backupCashOptions(from, tomorrow), awards: awardOptions(from) }]),
+    dates.flatMap((d) =>
+      ['LAS', 'SFO'].map((from) => [`${from}:${d}`, { cash: backupCashOptions(from, d), awards: awardOptions(from, d) }]),
+    ),
   ),
-  hotels: Object.fromEntries(['vegas', 'sf'].map((c) => [c, hotelOptions(c, tomorrow)])),
+  hotels: Object.fromEntries(dates.flatMap((d) => ['vegas', 'sf'].map((c) => [`${c}:${d}`, hotelOptions(c, d)]))),
   amtrakLive: liveStatus(),
 };
 

@@ -1,6 +1,6 @@
 // Amtrak provider. Schedules/fares are seed data (Amtrak has no public fare
 // API); live train status comes free from the community Amtraker API.
-import { loadJSON, fetchJSON, readSnapshot, writeSection, BROWSER_HEADERS } from '../util.js';
+import { loadJSON, fetchJSON, readSnapshot, writeSection, keepLastGood, usableSection, BROWSER_HEADERS } from '../util.js';
 import { fill } from './frontier.js';
 
 const ground = loadJSON('src/data/ground.json');
@@ -30,8 +30,8 @@ export function trainLegs() {
 }
 
 export function liveStatus() {
-  const snap = readSnapshot().sections.amtrak;
-  return snap?.status === 'live' ? snap.data?.trains ?? [] : [];
+  const snap = usableSection(readSnapshot().sections.amtrak);
+  return snap ? snap.data?.trains ?? [] : [];
 }
 
 // Amtrak reports lateness as prose ("12 minutes late", "2 hours, 5 minutes
@@ -133,9 +133,8 @@ export function delaysByLeg(trains) {
 
 // Live delay for a train leg, from the last sync.
 export function liveDelay(legId) {
-  const snap = readSnapshot().sections.amtrak;
-  if (snap?.status !== 'live') return null;
-  return snap.data?.delays?.[legId] ?? null;
+  const snap = usableSection(readSnapshot().sections.amtrak);
+  return snap?.data?.delays?.[legId] ?? null;
 }
 
 export async function sync() {
@@ -150,6 +149,9 @@ export async function sync() {
     const why = res.status === 403
       ? 'blocked with 403 - likely a network proxy/VPN or bot filter on this connection; try another network. (The static dashboard fetches Amtraker from the browser and is unaffected.)'
       : `unreachable (${res.status || res.error})`;
+    // Delays from 20 minutes ago still beat no delays at all.
+    const kept = keepLastGood('amtrak', `Amtraker ${why}`);
+    if (kept) return kept;
     return writeSection('amtrak', {
       status: 'error',
       data: {},

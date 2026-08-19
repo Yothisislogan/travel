@@ -38,6 +38,8 @@ node src/cli.js sync --section frontier,amtrak     # refresh just some sections
 
 GoWild fares are **capacity-controlled and normally bookable starting the day before domestic departure** (Eastern time; community reports put inventory release around midnight ET), so "tracking availability" means:
 
+**Live seat counts always show their age.** GoWild inventory turns over in minutes, so a bare "live" badge on a capture from this morning is worse than no badge — every live count is labelled `live · 12m`, and past an hour it becomes `4h old — recheck`. Counts are resolved **per segment**, so a nonstop's availability never decorates a connection through another city, and a connection is only marked confirmed when every one of its segments was actually searched.
+
 1. The agent knows the **booking window**: for any date it tells you exactly when GoWild booking opens and whether you can book *right now* (`status` and every GoWild view show this). If your pass promo grants advance booking (e.g. the 2026 Fall & Winter purchase-by-Aug-17 promo allowed booking through Jan 4, 2027 for an early-booking fee), set `gowild.promoAdvanceBookingThrough` in `trip.config.json` and the agent treats those dates as bookable now.
 2. It knows the **Frontier route map** (`src/data/frontier-routes.json`, refreshed on `sync`) and computes nonstop + one-connection GoWild paths for each leg - including **day-of-week checks**: RIC's Frontier flights run ~Thu/Sun only, and the agent flags any path that does not operate on your chosen date.
 3. It flags **blackout dates** from `src/data/gowild.json` (2026 calendar; conservative VERIFY placeholders for early 2027). Since 2026, Frontier sells a Peak Day Charge ($79-$159) that unlocks blackout dates.
@@ -66,7 +68,9 @@ cp .env.example .env   # then add any keys you have
 
 The planner builds a multimodal graph - GoWild nonstops (both directions of the route map), single-ticket backup flights, award flights (cheapest program per market), Amtrak long-distance legs (California Zephyr, Southwest Chief, Cardinal, Chicago→DC, Northeast Regional), intercity buses, and local transfers (BART, Metro, FlyAway, rideshares) - then searches all combinations up to 5 legs from your west coast location to Richmond or Norfolk.
 
-- **Sorting**: total travel time first, then cost (`--sort cost` flips it). Award miles are valued at 1.3¢/mile so miles itineraries rank fairly against cash.
+- **Sorting**: itineraries that actually *operate* on your date come first — a 2×/week chain that doesn't run that day is not a faster option, it's not an option — then total travel time, then cost (`--sort cost` flips the last two). Award miles are valued at 1.3¢/mile so miles itineraries rank fairly against cash.
+- **Dates that move with you**: each leg is stamped with the day you actually reach it, so the booking link for the last bus of a 55-hour chain is for the day you board it, not the day you left. Itineraries report their **arrival date** (`arrive Sun Aug 23 (+3 days)`), and a live price fetched for the start date is downgraded to its estimate range on any leg you board later — fares climb toward departure, so a stale price is always the cheap-looking one.
+- **Blackout dates are priced, not ignored**: since 2026 a blackout isn't a wall, it's a Peak Day Charge ($79–$159/segment). The planner adds it, so blackout itineraries stop winning the cost sort by pretending to be $30.
 - **Transfer buffers**: 2h between separately booked flights, 1.5h air↔ground, 1h ground↔ground, 30m around local transit. Overnight waits between separately booked legs are *not* modeled - a 52h Zephyr ride is 52h of scheduled travel, but your actual door-to-door depends on departure times.
 - **Mode diversity**: even when flights sweep the top of the list, the best train-based and bus-based itineraries are always included, so you can see the "no-fly" fallback at a glance.
 
@@ -111,5 +115,6 @@ npm test
 
 ## Caveats
 
+- **A blocked refresh never deletes good data.** Frontier blocking a datacenter IP is the expected outcome, not an exception, so a failed sync keeps the last live payload and marks it `stale` with its capture time instead of overwriting it with seed estimates. `publish` merges over the previous publish for the same reason — an unattended `--watch` run that got blocked can't wipe the seats off your phone.
 - Seed prices/durations are planning estimates, not quotes. Anything tagged `[estimate]` should be verified through the provided links before you rely on it; anything tagged `[live]` came from an API on your last `sync`.
 - GoWild fine print changes program-year to program-year (blackouts, fees, booking windows). `src/data/gowild.json` records what the agent assumes; verify against your pass's current terms.

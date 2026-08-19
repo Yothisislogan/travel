@@ -580,3 +580,201 @@ test('publish agent writes a service file that runs publish --watch', async () =
   assert.match(linux.body, /Restart=always/);
   assert.equal(unitFile('win32').kind, 'unsupported');
 });
+
+// ---- Audit fixes 1-7: everywhere the app used to show something untrue ----
+
+const { writeSection: wsFix, readSnapshot: rsFix, keepLastGood, usableSection, liveAgeClass } = await import('../src/util.js');
+const { liveForPath, gowildOptions: gwOpts, gowildRules: gwRules } = await import('../src/providers/frontier.js');
+const { resolveLegs, planReturn: planFix } = await import('../src/planner.js');
+const cashFix = backupCashOptions;
+const awardFix = awardOptions;
+
+const SNAP_PATH = new URL('../cache/snapshot.json', import.meta.url).pathname;
+const { readFileSync: rf, writeFileSync: wf, existsSync: ex } = await import('node:fs');
+function withSnapshot(sections, fn) {
+  const backup = ex(SNAP_PATH) ? rf(SNAP_PATH, 'utf8') : null;
+  try {
+    wf(SNAP_PATH, JSON.stringify({ sections }));
+    return fn();
+  } finally {
+    if (backup === null) wf(SNAP_PATH, JSON.stringify({ sections: {} }));
+    else wf(SNAP_PATH, backup);
+  }
+}
+
+test('fix 1: writeSection preserves capture time instead of re-stamping it', () => {
+  const captured = '2026-08-18T21:35:56.000Z';
+  withSnapshot({}, () => {
+    const folded = wsFix('frontier', { status: 'live', data: {}, notes: 'x', fetchedAt: captured });
+    assert.equal(folded.fetchedAt, captured, 'a published capture keeps the time it was captured');
+    assert.ok(folded.writtenAt && folded.writtenAt !== captured, 'and records separately when it was written');
+    const own = wsFix('flights', { status: 'live', data: {}, notes: 'y' });
+    assert.ok(Date.now() - Date.parse(own.fetchedAt) < 5000, 'a provider with no capture time still stamps now');
+  });
+});
+
+test('fix 1: a live capture beats a seed section of ANY age (the Sync-wipes-seats bug)', () => {
+  // Reproduces the real ordering: pages.yml runs sync (bot-blocked -> seed,
+  // stamped now) BEFORE the export folds in the published capture.
+  const published = { status: 'live', fetchedAt: '2026-08-18T21:35:00.000Z' };
+  const justSynced = { status: 'seed', fetchedAt: new Date().toISOString() };
+  const beats = (sec, current) => sec.status === 'live'
+    && (current?.status !== 'live' || Date.parse(sec.fetchedAt ?? 0) > Date.parse(current.fetchedAt ?? 0));
+  assert.equal(beats(published, justSynced), true, 'older live must beat newer seed');
+  assert.equal(beats(justSynced, published), false, 'seed never overwrites live');
+  assert.equal(beats(published, { status: 'live', fetchedAt: '2026-08-18T22:00:00.000Z' }), false, 'fresher live wins');
+});
+
+test('fix 1: live seats are labelled with a real age, and go loud when stale', () => {
+  const mins = (n) => new Date(Date.now() - n * 60000).toISOString();
+  assert.equal(liveAgeClass(mins(5)), 'fresh');
+  assert.equal(liveAgeClass(mins(90)), 'aging');
+  assert.equal(liveAgeClass(mins(400)), 'old');
+  assert.equal(liveAgeClass(null), null);
+});
+
+test('fix 2: one nonstop\'s seats never decorate a connection through another city', () => {
+  const checklist = [{ pair: 'LAS-SFO', date: '2026-08-19', status: 'live', gowildFlights: 1, flights: [{ gowildEnabled: true, flightNumber: '1401', goWildFare: 14.91, goWildSeatsRemaining: 5 }] }];
+  const nonstop = { from: 'LAS', to: 'SFO', via: null, segments: [{ from: 'LAS', to: 'SFO' }] };
+  const viaDEN = { from: 'LAS', to: 'SFO', via: 'DEN', segments: [{ from: 'LAS', to: 'DEN' }, { from: 'DEN', to: 'SFO' }] };
+  const direct = liveForPath(nonstop, checklist, '2026-08-19');
+  assert.equal(direct.gowildFlights, 1);
+  assert.equal(direct.complete, true);
+  assert.equal(direct.flights[0].goWildSeatsRemaining, 5);
+  assert.equal(liveForPath(viaDEN, checklist, '2026-08-19'), null, 'no segment of the connection was searched');
+  // A partially-checked connection is reported as partial, never as confirmed.
+  const partial = liveForPath({ ...viaDEN, segments: [{ from: 'LAS', to: 'SFO' }, { from: 'SFO', to: 'OAK' }] }, checklist, '2026-08-19');
+  assert.equal(partial.complete, false);
+  assert.equal(partial.checkedSegments, 1);
+  assert.equal(partial.totalSegments, 2);
+  assert.deepEqual(partial.flights, [], 'a connection carries no flat flight list');
+  // Wrong date is not this date's data.
+  assert.equal(liveForPath(nonstop, checklist, '2026-08-20'), null);
+});
+
+test('fix 2: the scarcest segment sets a connection\'s bookable count, not the sum', () => {
+  const checklist = [
+    { pair: 'LAS-DEN', date: '2026-08-19', status: 'live', gowildFlights: 4, flights: [] },
+    { pair: 'DEN-SFO', date: '2026-08-19', status: 'live', gowildFlights: 1, flights: [] },
+  ];
+  const p = { from: 'LAS', to: 'SFO', via: 'DEN', segments: [{ from: 'LAS', to: 'DEN' }, { from: 'DEN', to: 'SFO' }] };
+  const live = liveForPath(p, checklist, '2026-08-19');
+  assert.equal(live.complete, true);
+  assert.equal(live.gowildFlights, 1, 'min across segments, never 5');
+});
+
+test('fix 3: the planner knows which days a route flies, and ranks flyable first', () => {
+  // DEN-RIC is Thu/Sun in the seed data. 2026-08-19 is a Wednesday.
+  const wed = buildEdges({ date: '2026-08-19' }).find((e) => e.from === 'DEN' && e.to === 'RIC');
+  const thu = buildEdges({ date: '2026-08-20' }).find((e) => e.from === 'DEN' && e.to === 'RIC');
+  assert.equal(wed.operatesOnDate, false);
+  assert.equal(thu.operatesOnDate, true);
+  // A route that has not launched cannot be flown, whatever its frequency says.
+  const oak19 = buildEdges({ date: '2026-08-19' }).find((e) => e.from === 'LAS' && e.to === 'OAK');
+  assert.equal(oak19.operatesOnDate, false);
+  assert.equal(oak19.notLaunchedUntil, '2026-08-20');
+  assert.equal(buildEdges({ date: '2026-08-21' }).find((e) => e.from === 'LAS' && e.to === 'OAK').notLaunchedUntil, null);
+  // Ranking: nothing unflyable outranks something flyable.
+  const plan = planFix({ from: 'SFO', date: '2026-08-19', sort: 'cost', maxResults: 40 });
+  const firstBad = plan.itineraries.findIndex((it) => it.flyable === false);
+  const lastGood = plan.itineraries.map((it) => it.flyable).lastIndexOf(true);
+  if (firstBad !== -1) assert.ok(firstBad > lastGood, 'unflyable itineraries sort after every flyable one');
+  // The not-daily badge can now actually fire on a cash nonstop.
+  const breeze = buildEdges({ date: '2026-08-19' }).find((e) => e.mode === 'flight' && e.from === 'SFO' && e.to === 'RIC');
+  assert.equal(breeze.daysPerWeek, 2);
+});
+
+test('fix 4: a blackout date is priced with the Peak Day Charge, not ignored', () => {
+  const peak = gwRules().peakDayChargeUSD;
+  assert.ok(peak?.min > 0 && peak.max >= peak.min, 'the charge is structured data, not prose');
+  const normal = buildEdges({ date: '2026-11-22' }).find((e) => e.from === 'DEN' && e.to === 'RIC');
+  const black = buildEdges({ date: '2026-11-29' }).find((e) => e.from === 'DEN' && e.to === 'RIC');
+  assert.equal(normal.peakDayChargeUSD, null);
+  assert.deepEqual(black.peakDayChargeUSD, peak);
+  assert.equal(black.costUSD.min, normal.costUSD.min + peak.min);
+  assert.equal(black.costUSD.max, normal.costUSD.max + peak.max);
+  // ...and the outbound/hop card agrees with the warning printed above it.
+  const opts = gwOpts(['RIC'], ['LAS'], '2026-11-29');
+  const p = opts.paths[0];
+  assert.ok(opts.blackout, 'the date is a known blackout');
+  assert.ok(p.estCostUSD.min >= peak.min * p.segments.length, 'per-segment charge is in the estimate');
+});
+
+test('fix 6: each leg is dated by the day you reach it, and links follow', () => {
+  const legs = [
+    { mode: 'bus', from: 'LAS_BUS', to: 'DEN_BUS', hours: 15, costUSD: { min: 60, max: 90 }, dataStatus: 'estimate' },
+    { mode: 'bus', from: 'DEN_BUS', to: 'CHI_BUS', hours: 19, costUSD: { min: 70, max: 110 }, dataStatus: 'estimate' },
+    { mode: 'bus', from: 'CHI_BUS', to: 'DC_BUS', hours: 14.5, costUSD: { min: 55, max: 90 }, dataStatus: 'estimate' },
+  ];
+  const out = resolveLegs(legs, '2026-08-20');
+  assert.deepEqual(out.map((l) => l.legDate), ['2026-08-20', '2026-08-20', '2026-08-21']);
+  assert.deepEqual(out.map((l) => l.dayOffset), [0, 0, 1]);
+  assert.match(out[2].bookLink, /rideDate=2026-08-21/, 'the link is for the day you actually board');
+  assert.doesNotMatch(out[2].bookLink, /2026-08-20/);
+});
+
+test('fix 6: a live price is not claimed for a leg you board on another day', () => {
+  const legs = [
+    { mode: 'bus', from: 'A', to: 'B', hours: 30, costUSD: { min: 40, max: 40 }, seedCostUSD: { min: 55, max: 90 }, dataStatus: 'live' },
+    { mode: 'bus', from: 'B', to: 'C', hours: 2, costUSD: { min: 15, max: 15 }, seedCostUSD: { min: 15, max: 35 }, dataStatus: 'live' },
+  ];
+  const [first, second] = resolveLegs(legs, '2026-08-20');
+  assert.equal(first.dataStatus, 'live', 'leg you board on the search date keeps its live price');
+  assert.deepEqual(first.costUSD, { min: 40, max: 40 });
+  assert.equal(second.dataStatus, 'estimate', 'a leg boarded a day later does not get the searched price');
+  assert.deepEqual(second.costUSD, { min: 15, max: 35 }, 'it falls back to the seed range');
+  assert.match(second.priceNote, /you board this leg 2026-08-21/);
+});
+
+test('fix 6: itineraries report the date they get you there', () => {
+  const plan = planFix({ from: 'LAS', date: '2026-08-20', allowModes: ['train', 'bus', 'transit'] });
+  const long = plan.itineraries.find((it) => it.totalHours > 48);
+  assert.ok(long, 'a multi-day surface itinerary exists');
+  assert.equal(long.daysSpanned, Math.floor(long.totalHours / 24));
+  assert.equal(long.arrivalDate, addDaysISO('2026-08-20', long.daysSpanned));
+  assert.ok(long.arrivalDate > '2026-08-20', 'a 55h trip does not end the day it starts');
+  // Every leg after the first day carries the date you actually board it.
+  assert.ok(long.legs.some((l) => l.dayOffset > 0 && l.legDate > '2026-08-20'));
+});
+
+test('fix 7: a blocked refresh keeps the last good data instead of deleting it', () => {
+  withSnapshot({ frontier: { status: 'live', fetchedAt: '2026-08-19T00:00:00.000Z', data: { checklist: [{ pair: 'LAS-SFO' }] }, notes: 'good' } }, () => {
+    const kept = keepLastGood('frontier', 'Frontier blocked this refresh.');
+    assert.equal(kept.status, 'stale');
+    assert.deepEqual(kept.data.checklist, [{ pair: 'LAS-SFO' }], 'the seats survive');
+    assert.equal(kept.fetchedAt, '2026-08-19T00:00:00.000Z', 'and still say when they were captured');
+    assert.match(kept.notes, /blocked/);
+    // Stale is usable data - readers must not silently fall back to seed.
+    assert.ok(usableSection(kept));
+    // A second block does not keep resetting the capture time.
+    const again = keepLastGood('frontier', 'blocked again');
+    assert.equal(again.lastLiveAt, '2026-08-19T00:00:00.000Z');
+  });
+  // With nothing good to keep, there is nothing to preserve and we say so.
+  withSnapshot({ frontier: { status: 'seed', data: {}, notes: 'seed' } }, () => {
+    assert.equal(keepLastGood('frontier', 'blocked'), null);
+  });
+});
+
+test('fix 5: cash, hotel and award data are only "live" for the date they were searched', () => {
+  withSnapshot({
+    flights: { status: 'live', fetchedAt: new Date().toISOString(), data: { searchDate: '2026-08-25', offers: { 'LAS-RIC': { priceUSD: 129, carrier: 'Breeze', durationHours: 5 } } } },
+    awards: { status: 'live', fetchedAt: new Date().toISOString(), data: { searchDate: '2026-08-25', availability: [{ from: 'LAS', to: 'RIC', program: 'Atmos Rewards', miles: 9500, date: '2026-08-27', source: 'seats.aero' }] } },
+  }, () => {
+    const wrongDay = cashFix('LAS', '2026-08-20').options.find((o) => o.to === 'RIC');
+    assert.equal(wrongDay.dataStatus, 'estimate', '$129 was for the 25th, not the 20th');
+    assert.notDeepEqual(wrongDay.costUSD, { min: 129, max: 129 });
+    const rightDay = cashFix('LAS', '2026-08-25').options.find((o) => o.to === 'RIC');
+    assert.equal(rightDay.dataStatus, 'live');
+    assert.deepEqual(rightDay.costUSD, { min: 129, max: 129 });
+
+    // An award seat two days out is real, but it is not this date's answer.
+    const near = awardFix('LAS', '2026-08-25').options.find((o) => o.to === 'RIC' && o.program === 'Atmos Rewards');
+    assert.equal(near.dataStatus, 'estimate');
+    assert.equal(near.nearbyLive.date, '2026-08-27');
+    assert.equal(near.nearbyLive.miles, 9500);
+    const exact = awardFix('LAS', '2026-08-27').options.find((o) => o.to === 'RIC' && o.program === 'Atmos Rewards');
+    assert.equal(exact.dataStatus, 'live');
+    assert.equal(exact.miles, 9500);
+  });
+});
